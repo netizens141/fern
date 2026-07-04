@@ -67,8 +67,8 @@ local Fern do
         GitHub = {
             RawURL = "https://raw.githubusercontent.com/netizens141/fern/main/",
             Images = {
-                Logo = "fern%20logo.png",  -- Your logo file name with spaces encoded
-                Icon = "fern%20logo.png"   -- Using same logo as default icon
+                Logo = "fern%20logo.png",
+                Icon = "fern%20logo.png"
             }
         },
         Pages = {},
@@ -140,8 +140,8 @@ local Fern do
     -- Default theme (Royal Green)
     local Themes = {
         ["Preset"] = {
-            ["Accent"] = FromRGB(0, 102, 51),      -- Royal Green
-            ["DarkAccent"] = FromRGB(0, 77, 38)    -- Darker Royal Green
+            ["Accent"] = FromRGB(0, 102, 51),
+            ["DarkAccent"] = FromRGB(0, 77, 38)
         }
     }
 
@@ -169,7 +169,7 @@ local Fern do
                 print("[Fern] Downloaded image: " .. FileName)
             else
                 warn("[Fern] Failed to download image: " .. FileName)
-                return "rbxassetid://124454910007637" -- Fallback default icon
+                return "rbxassetid://124454910007637"
             end
         end
         
@@ -1772,7 +1772,7 @@ local Fern do
             return AttachKeybind(Toggle, Data)
         end
 
-        Items["Toggle"]:Connect("MouseButton1Down", function())
+        Items["Toggle"]:Connect("MouseButton1Down", function()
             Toggle:Set(not Toggle.Value)
         end)
 
