@@ -66,6 +66,14 @@ local Fern do
             Assets = "Fern/Images",
             Fonts = "Fern/Fonts"
         },
+        -- GitHub image configuration
+        GitHub = {
+            RawURL = "https://raw.githubusercontent.com/netizens141/fern/main/",
+            Images = {
+                Logo = "fern%20logo.png",  -- Your logo file name with spaces encoded
+                Icon = "fern%20logo.png"   -- Using same logo as default icon
+            }
+        },
         Pages = {},
         Sections = {},
         Connections = {},
@@ -128,11 +136,11 @@ local Fern do
         ["RightAlt"] = "RightAlt"
     }
 
-    -- Default theme (Fern green)
+    -- Default theme (Royal Green)
     local Themes = {
         ["Preset"] = {
-            ["Accent"] = FromRGB(72, 187, 120),    -- Fern green
-            ["DarkAccent"] = FromRGB(52, 150, 95)  -- Darker fern green
+            ["Accent"] = FromRGB(0, 102, 51),      -- Royal Green
+            ["DarkAccent"] = FromRGB(0, 77, 38)    -- Darker Royal Green
         }
     }
 
@@ -143,6 +151,28 @@ local Fern do
         if not isfolder(Value) then
             makefolder(Value)
         end
+    end
+
+    -- Function to get image from GitHub
+    function Fern:GetGitHubImage(FileName)
+        local Path = Fern.Folders.Assets .. "/" .. FileName
+        local URL = Fern.GitHub.RawURL .. FileName
+        
+        if not isfile(Path) then
+            local Success, Result = pcall(function()
+                return game:HttpGet(URL)
+            end)
+            
+            if Success and Result then
+                writefile(Path, Result)
+                print("[Fern] Downloaded image: " .. FileName)
+            else
+                warn("[Fern] Failed to download image: " .. FileName)
+                return "rbxassetid://124454910007637" -- Fallback default icon
+            end
+        end
+        
+        return getcustomasset(Path)
     end
 
     -- Tween Module
@@ -324,7 +354,7 @@ local Fern do
                     Name = "Resize",
                     Size = Size,
                     Position = Position,
-                    BackgroundColor3 = FromRGB(72, 187, 120),
+                    BackgroundColor3 = FromRGB(0, 102, 51),
                     BackgroundTransparency = 1,
                     Text = "",
                     BorderSizePixel = 0,
@@ -804,8 +834,2188 @@ local Fern do
         end)
     end
 
-    -- [UI Element Creation Functions - Continue with Window, Page, Section, etc.]
-    -- (I'll include the full implementations in the complete file)
+    -- ============================================
+    -- UI ELEMENT CREATION FUNCTIONS
+    -- ============================================
 
+    -- Window
+    function Fern:Window(Data)
+        Data = Data or { }
+        
+        local Window = {
+            Logo = Data.Logo or Data.logo or Fern:GetGitHubImage(Fern.GitHub.Images.Logo),
+            Build = Data.Build or Data.build or "v1.0",
+            Pages = { },
+            Items = { },
+            IsOpen = false
+        }
+
+        local Items = { } do
+            Items["MainFrame"] = Instances:Create("Frame", {
+                Parent = Fern.Holder.Instance,
+                Name = "MainFrame",
+                AnchorPoint = Vector2New(0.5, 0.5),
+                Position = UDim2New(0.5, 0, 0.5, 0),
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(0, 786, 0, 481),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Items["MainFrame"]:MakeDraggable()
+            Items["MainFrame"]:MakeResizeable(Vector2New(786, 481), Vector2New(9999, 9999))
+
+            Instances:Create("UICorner", {
+                Parent = Items["MainFrame"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            -- Bottom bar
+            Items["Bottom"] = Instances:Create("Frame", {
+                Parent = Items["MainFrame"].Instance,
+                AnchorPoint = Vector2New(0, 1),
+                Position = UDim2New(0, 0, 1, 0),
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(1, 0, 0, 25),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Bottom"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            Items["BuildText"] = Instances:Create("TextLabel", {
+                Parent = Items["Bottom"].Instance,
+                FontFace = Fern.Font,
+                RichText = true,
+                TextColor3 = FromRGB(74, 74, 74),
+                Text = "build: " .. Window.Build,
+                Size = UDim2New(0, 0, 0, 15),
+                AnchorPoint = Vector2New(0, 0.5),
+                BorderSizePixel = 0,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 8, 0.5, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["MainFrame"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            -- Top bar
+            Items["Top"] = Instances:Create("Frame", {
+                Parent = Items["MainFrame"].Instance,
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(1, 0, 0, 46),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(26, 26, 26)
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Top"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            Items["Logo"] = Instances:Create("ImageLabel", {
+                Parent = Items["Top"].Instance,
+                ImageColor3 = FromRGB(0, 102, 51),
+                ScaleType = Enum.ScaleType.Fit,
+                AnchorPoint = Vector2New(0, 0.5),
+                Image = Window.Logo,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 6, 0.5, 0),
+                Size = UDim2New(0, 32, 0, 32),
+                BorderSizePixel = 0
+            })
+            Items["Logo"]:AddToTheme({ImageColor3 = "Accent"})
+            
+            Items["Liner"] = Instances:Create("Frame", {
+                Parent = Items["Top"].Instance,
+                AnchorPoint = Vector2New(0, 1),
+                Position = UDim2New(0, 0, 1, -1),
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(1, 0, 0, 1),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(0, 102, 51)
+            })
+            Items["Liner"]:AddToTheme({BackgroundColor3 = "Accent"})
+            
+            Items["SubPages"] = Instances:Create("Frame", {
+                Parent = Items["Top"].Instance,
+                AnchorPoint = Vector2New(1, 0),
+                BackgroundTransparency = 1,
+                Position = UDim2New(1, 0, 0, 0),
+                Size = UDim2New(0, 0, 1, 0),
+                BorderSizePixel = 0,
+                AutomaticSize = Enum.AutomaticSize.X
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["SubPages"].Instance,
+                PaddingRight = UDimNew(0, 12),
+                PaddingLeft = UDimNew(0, 12)
+            })
+            
+            Instances:Create("UIListLayout", {
+                Parent = Items["SubPages"].Instance,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDimNew(0, 20),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            Items["Side"] = Instances:Create("Frame", {
+                Parent = Items["MainFrame"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 0, 0, 46),
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(0, 148, 1, -71),
+                BorderSizePixel = 0
+            })
+            
+            Items["PageHolder"] = Instances:Create("Frame", {
+                Parent = Items["Side"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 0, 0, 13),
+                Size = UDim2New(1, 0, 1, -13)
+            })
+
+            Instances:Create("Frame", {
+                Parent = Items["Side"].Instance,
+                AnchorPoint = Vector2New(1, 0),
+                Position = UDim2New(1, 0, 0, 0),
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(0, 1, 1, 0),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(35, 35, 35)
+            })
+
+            Window.Items = Items
+        end
+        
+        -- Window methods
+        function Window:SetCenter()
+            local CenterPosition = Items["MainFrame"].Instance.AbsolutePosition
+            task.wait()
+            Items["MainFrame"].Instance.AnchorPoint = Vector2New(0, 0)
+            Items["MainFrame"].Instance.Position = UDim2New(0, CenterPosition.X, 0, CenterPosition.Y)
+        end
+
+        function Window:SetOpen(Bool)
+            for _, Frame in Fern.OpenFrames do 
+                if Frame.SetOpen then Frame:SetOpen(false) end
+            end
+
+            Window.IsOpen = Bool
+            Items["MainFrame"].Instance.Visible = Bool 
+
+            local Descendants = Items["MainFrame"].Instance:GetDescendants()
+            TableInsert(Descendants, Items["MainFrame"].Instance)
+
+            for _, Value in Descendants do 
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then 
+                        for _, Prop in Props do 
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+        end
+
+        Fern:Connect(UserInputService.InputBegan, function(Input)
+            if tostring(Input.KeyCode) == Fern.MenuKeybind or tostring(Input.UserInputType) == Fern.MenuKeybind then
+                Window:SetOpen(not Window.IsOpen)
+            end
+        end)
+
+        Window:SetCenter()
+        task.wait()
+        Window:SetOpen(true)
+        
+        return setmetatable(Window, Fern)
+    end
+
+    -- Page
+    function Fern:Page(Data)
+        Data = Data or { }
+
+        local Page = {
+            Window = self,
+            Icon = Data.Icon or Data.icon or Fern:GetGitHubImage(Fern.GitHub.Images.Icon),
+            Items = { },
+            SubPages = { },
+            Active = false
+        }
+
+        local Items = { } do
+            Items["Inactive"] = Instances:Create("TextButton", {
+                Parent = Page.Window.Items["SubPages"].Instance,
+                Text = "",
+                AutoButtonColor = false,
+                BackgroundTransparency = 1,
+                Size = UDim2New(0, 20, 0, 20),
+                BorderSizePixel = 0,
+                FontFace = Fern.Font,
+                TextSize = 14
+            })
+            
+            Items["Icon"] = Instances:Create("ImageLabel", {
+                Parent = Items["Inactive"].Instance,
+                ImageColor3 = FromRGB(74, 74, 74),
+                Image = Page.Icon,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 1, 0)
+            })
+            Items["Icon"]:AddToTheme({ImageColor3 = function()
+                return FromRGB(74, 74, 74)
+            end})
+
+            Items["PageContent"] = Instances:Create("Frame", {
+                Parent = Fern.UnusedHolder.Instance,
+                Visible = false,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 149, 0, 45),
+                Size = UDim2New(1, -149, 1, -70)
+            })
+
+            Items["SubPages"] = Instances:Create("Frame", {
+                Parent = Page.Window.Items["PageHolder"].Instance,
+                BackgroundTransparency = 1,
+                Visible = false,
+                Size = UDim2New(1, 0, 1, 0)
+            })
+
+            Instances:Create("UIListLayout", {
+                Parent = Items["SubPages"].Instance,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            Items["Inactive"]:OnHover(function()
+                if Page.Active then return end
+                Items["Icon"]:Tween(nil, {ImageColor3 = FromRGB(145, 145, 145)})
+            end)
+
+            Items["Inactive"]:OnHoverLeave(function()
+                if Page.Active then return end
+                Items["Icon"]:Tween(nil, {ImageColor3 = FromRGB(74, 74, 74)})
+            end)
+
+            Page.Items = Items
+        end
+
+        function Page:Turn(Bool)
+            Page.Active = Bool 
+            Items["PageContent"].Instance.Visible = Bool 
+            Items["PageContent"].Instance.Parent = Bool and Page.Window.Items["MainFrame"].Instance or Fern.UnusedHolder.Instance
+            Items["SubPages"].Instance.Visible = Bool
+
+            if Page.Active then
+                Items["Icon"]:ChangeItemTheme({ImageColor3 = "Accent"})
+                Items["Icon"]:Tween(nil, {ImageColor3 = Fern.Theme.Accent})
+            else
+                Items["Icon"]:ChangeItemTheme({ImageColor3 = function()
+                    return FromRGB(74, 74, 74)
+                end})
+                Items["Icon"]:Tween(nil, {ImageColor3 = FromRGB(74, 74, 74)})
+            end
+
+            local AllInstances = Items["PageContent"].Instance:GetDescendants()
+            TableInsert(AllInstances, Items["PageContent"].Instance)
+            
+            for _, Value in AllInstances do 
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then 
+                        for _, Prop in Props do 
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+        end
+
+        Items["Inactive"]:Connect("MouseButton1Down", function()
+            for _, P in Page.Window.Pages do 
+                P:Turn(P == Page)
+            end
+        end)
+
+        if #Page.Window.Pages == 0 then 
+            Page:Turn(true)
+        end
+
+        TableInsert(Page.Window.Pages, Page)
+        return setmetatable(Page, Fern.Pages)
+    end
+
+    -- SubPage
+    function Fern.Pages:SubPage(Data)
+        Data = Data or { }
+
+        local Page = {
+            Window = self.Window,
+            Page = self,
+            Name = Data.Name or Data.name or "SubPage",
+            Items = { },
+            Active = false
+        }
+
+        local Items = { } do
+            Items["Inactive"] = Instances:Create("TextButton", {
+                Parent = Page.Page.Items["SubPages"].Instance,
+                Text = "",
+                AutoButtonColor = false,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 30),
+                BorderSizePixel = 0
+            })
+            
+            Items["Accent1"] = Instances:Create("Frame", {
+                Parent = Items["Inactive"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(0, 1, 0, 0),
+                AnchorPoint = Vector2New(0, 0.5),
+                Position = UDim2New(0, 0, 0.5, 0),
+                ZIndex = 2,
+                BorderSizePixel = 0
+            })
+            Items["Accent1"]:AddToTheme({BackgroundColor3 = "Accent"})
+            
+            Items["Accent2"] = Instances:Create("Frame", {
+                Parent = Items["Inactive"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 1, 0.5, 0),
+                AnchorPoint = Vector2New(0, 0.5),
+                Size = UDim2New(0, 1, 0, 0),
+                ZIndex = 2,
+                BorderSizePixel = 0
+            })
+            Items["Accent2"]:AddToTheme({BackgroundColor3 = "DarkAccent"})
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Inactive"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(74, 74, 74),
+                Text = Page.Name:upper(),
+                AnchorPoint = Vector2New(0, 0.5),
+                Size = UDim2New(0, 0, 0, 15),
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 14, 0.5, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 13
+            })
+            Items["Text"]:AddToTheme({TextColor3 = function()
+                return FromRGB(74, 74, 74)
+            end})
+            
+            Items["Background"] = Instances:Create("Frame", {
+                Parent = Items["Inactive"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 1, 0),
+                BorderSizePixel = 0
+            })
+            
+            Items["PageContent"] = Instances:Create("Frame", {
+                Parent = Fern.UnusedHolder.Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 1, 0),
+                Visible = false
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["PageContent"].Instance,
+                PaddingTop = UDimNew(0, 15),
+                PaddingBottom = UDimNew(0, 15),
+                PaddingRight = UDimNew(0, 15),
+                PaddingLeft = UDimNew(0, 15)
+            })
+            
+            Instances:Create("UIListLayout", {
+                Parent = Items["PageContent"].Instance,
+                FillDirection = Enum.FillDirection.Horizontal,
+                HorizontalFlex = Enum.UIFlexAlignment.Fill,
+                Padding = UDimNew(0, 15),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                VerticalFlex = Enum.UIFlexAlignment.Fill
+            })
+
+            Page.Items = Items
+        end
+
+        function Page:Turn(Bool)
+            Page.Active = Bool 
+            Items["PageContent"].Instance.Visible = Bool 
+            Items["PageContent"].Instance.Parent = Bool and Page.Page.Items["PageContent"].Instance or Fern.UnusedHolder.Instance
+
+            if Page.Active then
+                Items["Text"]:ChangeItemTheme({TextColor3 = "Accent"})
+                Items["Text"]:Tween(nil, {TextColor3 = Fern.Theme.Accent})
+                Items["Accent1"]:Tween(TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 0, 
+                    Size = UDim2New(0, 1, 1, 0)
+                })
+                Items["Accent2"]:Tween(TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 0, 
+                    Size = UDim2New(0, 1, 1, 0)
+                })
+                Items["Background"]:Tween(nil, {BackgroundTransparency = 0})
+            else
+                Items["Text"]:ChangeItemTheme({TextColor3 = function()
+                    return FromRGB(74, 74, 74)
+                end})
+                Items["Text"]:Tween(nil, {TextColor3 = FromRGB(74, 74, 74)})
+                Items["Accent1"]:Tween(TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 1, 
+                    Size = UDim2New(0, 1, 0, 0)
+                })
+                Items["Accent2"]:Tween(TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                    BackgroundTransparency = 1, 
+                    Size = UDim2New(0, 1, 0, 0)
+                })
+                Items["Background"]:Tween(nil, {BackgroundTransparency = 1})
+            end
+
+            local AllInstances = Items["PageContent"].Instance:GetDescendants()
+            TableInsert(AllInstances, Items["PageContent"].Instance)
+            
+            for _, Value in AllInstances do 
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then 
+                        for _, Prop in Props do 
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+        end
+
+        Items["Inactive"]:Connect("MouseButton1Down", function()
+            for _, P in Page.Page.SubPages do 
+                P:Turn(P == Page)
+            end
+        end)
+
+        if #Page.Page.SubPages == 0 then 
+            Page:Turn(true)
+        end
+
+        TableInsert(Page.Page.SubPages, Page)
+        return setmetatable(Page, Fern.Pages)
+    end
+
+    -- Section
+    function Fern.Pages:Section(Data)
+        Data = Data or { }
+
+        local Section = {
+            Window = self.Window,
+            Page = self,
+            Name = Data.Name or Data.name or "Section",
+            Items = { }
+        }
+
+        local Items = { } do
+            Items["Outline"] = Instances:Create("Frame", {
+                Parent = Section.Page.Items["PageContent"].Instance,
+                ClipsDescendants = true,
+                BorderColor3 = FromRGB(0, 0, 0),
+                Size = UDim2New(0, 100, 0, 125),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(35, 35, 35)
+            })
+            
+            Items["Background"] = Instances:Create("Frame", {
+                Parent = Items["Outline"].Instance,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 1, -2),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(18, 18, 18)
+            })
+            
+            Items["TopPartBackground"] = Instances:Create("Frame", {
+                Parent = Items["Background"].Instance,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 0, 19),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(18, 18, 18)
+            })
+            
+            Items["Top"] = Instances:Create("Frame", {
+                Parent = Items["TopPartBackground"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 19),
+                BorderSizePixel = 0
+            })
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Top"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(119, 119, 119),
+                Text = Section.Name,
+                AnchorPoint = Vector2New(0, 0.5),
+                Size = UDim2New(0, 0, 0, 15),
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 6, 0.5, -2),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Background"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            Items["Elements"] = Instances:Create("ScrollingFrame", {
+                Parent = Items["Background"].Instance,
+                Active = true,
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ZIndex = 1,
+                BorderSizePixel = 0,
+                CanvasSize = UDim2New(0, 0, 0, 0),
+                ScrollBarImageColor3 = FromRGB(35, 35, 35),
+                MidImage = "rbxassetid://112378059475801",
+                ScrollBarThickness = 3,
+                Size = UDim2New(1, -2, 1, -23),
+                Position = UDim2New(0, 0, 0, 21),
+                TopImage = "rbxassetid://112378059475801",
+                BottomImage = "rbxassetid://112378059475801",
+                BackgroundTransparency = 1
+            })
+            
+            Items["ElementsHolder"] = Instances:Create("Frame", {
+                Parent = Items["Elements"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 14, 0, 7),
+                Size = UDim2New(1, -26, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y
+            })
+            
+            Instances:Create("UIListLayout", {
+                Parent = Items["ElementsHolder"].Instance,
+                Padding = UDimNew(0, 10),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["Elements"].Instance,
+                PaddingBottom = UDimNew(0, 22)
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Outline"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Section.Items = Items
+        end
+
+        return setmetatable(Section, Fern.Sections)
+    end
+
+    -- Toggle
+    function Fern.Sections:Toggle(Data)
+        Data = Data or { }
+
+        local Toggle = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Data.Name or Data.name or "Toggle",
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or false,
+            Callback = Data.Callback or Data.callback or function() end,
+            Value = false
+        }
+
+        local Items = { } do 
+            Items["Toggle"] = Instances:Create("TextButton", {
+                Parent = Toggle.Section.Items["ElementsHolder"].Instance,
+                Active = false,
+                Text = "",
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 13),
+                Selectable = false,
+                BorderSizePixel = 0
+            })
+            
+            Items["Indicator"] = Instances:Create("Frame", {
+                Parent = Items["Toggle"].Instance,
+                AnchorPoint = Vector2New(0, 0.5),
+                Position = UDim2New(0, 0, 0.5, 0),
+                Size = UDim2New(0, 9, 0, 9),
+                BorderSizePixel = 2,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            Items["Indicator"]:AddToTheme({BackgroundColor3 = function()
+                return FromRGB(20, 20, 20)
+            end})
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["Indicator"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Toggle"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = Toggle.Name,
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(0, 17, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+
+            Items["Toggle"]:OnHover(function()
+                if Toggle.Value then return end 
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = Fern:GetLighterColor(FromRGB(20, 20, 20), 1.45)})
+            end)
+
+            Items["Toggle"]:OnHoverLeave(function()
+                if Toggle.Value then return end 
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = FromRGB(20, 20, 20)})
+            end)
+        end
+
+        function Toggle:Get()
+            return Toggle.Value 
+        end
+
+        function Toggle:Set(Value)
+            Toggle.Value = Value 
+            Fern.Flags[Toggle.Flag] = Value 
+
+            if Toggle.Value then 
+                Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = "Accent"})
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = Fern.Theme.Accent})
+            else
+                Items["Indicator"]:ChangeItemTheme({BackgroundColor3 = function()
+                    return FromRGB(20, 20, 20)
+                end})
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = FromRGB(20, 20, 20)})
+            end
+
+            Fern:SafeCall(Toggle.Callback, Toggle.Value)
+        end
+
+        function Toggle:SetVisibility(Bool)
+            Items["Toggle"].Instance.Visible = Bool 
+        end
+
+        Items["Toggle"]:Connect("MouseButton1Down", function()
+            Toggle:Set(not Toggle.Value)
+        end)
+
+        Toggle:Set(Toggle.Default)
+        Fern.SetFlags[Toggle.Flag] = function(Value)
+            Toggle:Set(Value)
+        end
+
+        return Toggle 
+    end
+
+    -- Button
+    function Fern.Sections:Button(Data)
+        Data = Data or { }
+
+        local Button = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Data.Name or Data.name or "Button",
+            Callback = Data.Callback or Data.callback or function() end
+        }
+
+        local Items = { } do
+            Items["ButtonHolder"] = Instances:Create("Frame", {
+                Parent = Button.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 21),
+                BorderSizePixel = 0
+            })
+            
+            Items["Outline"] = Instances:Create("Frame", {
+                Parent = Items["ButtonHolder"].Instance,
+                Position = UDim2New(0, 17, 0, 0),
+                Size = UDim2New(1, -50, 0, 21),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(1, 1, 1)
+            })
+            
+            Items["Inline"] = Instances:Create("Frame", {
+                Parent = Items["Outline"].Instance,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 1, -2),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(35, 35, 35)
+            })
+            
+            Items["Indicator"] = Instances:Create("TextButton", {
+                Parent = Items["Inline"].Instance,
+                Text = "",
+                AutoButtonColor = false,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 1, -2),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Items["Value"] = Instances:Create("TextLabel", {
+                Parent = Items["Indicator"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = Button.Name,
+                AnchorPoint = Vector2New(0, 0.5),
+                Size = UDim2New(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 6, 0.4166666567325592, 0),
+                AutomaticSize = Enum.AutomaticSize.XY,
+                TextSize = 14
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Indicator"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+            Instances:Create("UICorner", {
+                Parent = Items["Inline"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+            Instances:Create("UICorner", {
+                Parent = Items["Outline"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Items["ButtonHolder"]:OnHover(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = Fern:GetLighterColor(FromRGB(20, 20, 20), 1.45)})
+            end)
+
+            Items["ButtonHolder"]:OnHoverLeave(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = FromRGB(20, 20, 20)})
+            end)
+        end
+
+        function Button:Press()
+            Tween:Create(Items["Value"].Instance, nil, {TextColor3 = Fern.Theme.Accent}, true)
+            Fern:SafeCall(Button.Callback)
+            task.wait(0.1)
+            Tween:Create(Items["Value"].Instance, nil, {TextColor3 = FromRGB(221, 221, 221)}, true)
+        end
+
+        function Button:SetVisibility(Bool)
+            Items["ButtonHolder"].Instance.Visible = Bool
+        end
+
+        Items["Indicator"]:Connect("MouseButton1Down", function()
+            Button:Press()
+        end)
+
+        return Button
+    end
+
+    -- Slider
+    function Fern.Sections:Slider(Data)
+        Data = Data or { }
+
+        local Slider = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Data.Name or Data.name or "Slider",
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Min = Data.Min or Data.min or 0,
+            Decimals = Data.Decimals or Data.decimals or 1,
+            Suffix = Data.Suffix or Data.suffix or "",
+            Max = Data.Max or Data.max or 100,
+            Default = Data.Default or Data.Default or 0,
+            Callback = Data.Callback or Data.callback or function() end,
+            Value = 0,
+            Sliding = false
+        }
+
+        local Items = { } do 
+            Items["Slider"] = Instances:Create("Frame", {
+                Parent = Slider.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 27),
+                BorderSizePixel = 0
+            })
+            
+            Items["Indicator"] = Instances:Create("TextButton", {
+                Parent = Items["Slider"].Instance,
+                Text = "",
+                AutoButtonColor = false,
+                Position = UDim2New(0, 17, 0, 17),
+                Size = UDim2New(1, -50, 0, 9),
+                BorderSizePixel = 2,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["Indicator"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["Accent"] = Instances:Create("Frame", {
+                Parent = Items["Indicator"].Instance,
+                Size = UDim2New(0.5, -2, 1, 0),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(0, 102, 51)
+            })
+            Items["Accent"]:AddToTheme({BackgroundColor3 = "Accent"})
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Slider"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = Slider.Name,
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(0, 17, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+
+            Items["Value"] = Instances:Create("TextLabel", {
+                Parent = Items["Slider"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = "",
+                AnchorPoint = Vector2New(1, 0),
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(1, -28, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+
+            Items["Indicator"]:OnHover(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = Fern:GetLighterColor(FromRGB(20, 20, 20), 1.45)})
+            end)
+
+            Items["Indicator"]:OnHoverLeave(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = FromRGB(20, 20, 20)})
+            end)
+        end
+
+        function Slider:Get()
+            return Slider.Value
+        end
+
+        function Slider:Set(Value)
+            Slider.Value = Fern:SafeCall(function()
+                return MathFloor(MathClamp(Value, Slider.Min, Slider.Max) * (10 ^ Slider.Decimals)) / (10 ^ Slider.Decimals)
+            end) or 0
+            
+            Fern.Flags[Slider.Flag] = Slider.Value
+
+            Items["Accent"]:Tween(TweenInfo.new(Fern.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2New((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0)
+            })
+            Items["Value"].Instance.Text = string.format("%s%s", Slider.Value, Slider.Suffix)
+
+            Fern:SafeCall(Slider.Callback, Slider.Value)
+        end
+
+        function Slider:SetVisibility(Bool)
+            Items["Slider"].Instance.Visible = Bool
+        end
+
+        Items["Indicator"]:Connect("InputBegan", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                Slider.Sliding = true 
+                local SizeX = (Input.Position.X - Items["Indicator"].Instance.AbsolutePosition.X) / Items["Indicator"].Instance.AbsoluteSize.X
+                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+                Slider:Set(Value)
+            end
+        end)
+
+        Items["Indicator"]:Connect("InputEnded", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                Slider.Sliding = false
+            end
+        end)
+
+        Fern:Connect(UserInputService.InputChanged, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseMovement and Slider.Sliding then
+                local SizeX = (Input.Position.X - Items["Indicator"].Instance.AbsolutePosition.X) / Items["Indicator"].Instance.AbsoluteSize.X
+                local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+                Slider:Set(Value)
+            end
+        end)
+
+        if Slider.Default then
+            Slider:Set(Slider.Default)
+        end
+
+        Fern.SetFlags[Slider.Flag] = function(Value)
+            Slider:Set(Value)
+        end
+
+        return Slider 
+    end
+
+    -- Label
+    function Fern.Sections:Label(Text)
+        local Label = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Text or "Label"
+        }
+
+        local Items = { } do
+            Items["Label"] = Instances:Create("Frame", {
+                Parent = Label.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 15),
+                BorderSizePixel = 0
+            })
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Label"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(74, 74, 74),
+                Text = Label.Name,
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(0, 17, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+        end
+
+        function Label:SetText(Text)
+            Text = tostring(Text)
+            Items["Text"].Instance.Text = Text
+        end
+
+        function Label:SetVisibility(Bool)
+            Items["Label"].Instance.Visible = Bool
+        end
+
+        return Label 
+    end
+
+    -- Keybind List
+    function Fern:KeybindList()
+        local KeybindList = { }
+        Fern.KeyList = KeybindList
+
+        local Items = { } do
+            Items["KeybindsList"] = Instances:Create("Frame", {
+                Parent = Fern.Holder.Instance,
+                Size = UDim2New(0, 0, 0, 35),
+                Position = UDim2New(0.014184396713972092, 0, 0.3557213842868805, 0),
+                BorderSizePixel = 0,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                BackgroundColor3 = FromRGB(26, 26, 26)
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["KeybindsList"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["KeybindsList"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["Top"] = Instances:Create("Frame", {
+                Parent = Items["KeybindsList"].Instance,
+                Size = UDim2New(0, 150, 0, 25),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(26, 26, 26)
+            })
+            
+            Items["Liner"] = Instances:Create("Frame", {
+                Parent = Items["Top"].Instance,
+                AnchorPoint = Vector2New(0, 1),
+                Position = UDim2New(0, 0, 1, -1),
+                Size = UDim2New(1, 0, 0, 1),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(0, 102, 51)
+            })
+            Items["Liner"]:AddToTheme({BackgroundColor3 = "Accent"})
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Top"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = "Keybinds",
+                AnchorPoint = Vector2New(0, 0.5),
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 0, 0.5, -2),
+                Size = UDim2New(0, 150, 1, 0),
+                TextSize = 14
+            })
+            
+            Items["Content"] = Instances:Create("Frame", {
+                Parent = Items["KeybindsList"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 0, 0, 25),
+                Size = UDim2New(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y
+            })
+            
+            Instances:Create("UIListLayout", {
+                Parent = Items["Content"].Instance,
+                Padding = UDimNew(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["Content"].Instance,
+                PaddingBottom = UDimNew(0, 8),
+                PaddingTop = UDimNew(0, 5),
+                PaddingLeft = UDimNew(0, 8)
+            })
+        end
+
+        function KeybindList:SetVisibility(Bool)
+            Items["KeybindsList"].Instance.Visible = Bool
+        end
+
+        function KeybindList:Add(Name, Mode)
+            local NewKey = Instances:Create("TextLabel", {
+                Parent = Items["Content"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(122, 122, 122),
+                Text = Name,
+                Size = UDim2New(1, 0, 0, 20),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+            
+            local NewKeyMode = Instances:Create("TextLabel", {
+                Parent = NewKey.Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(112, 112, 112),
+                Text = Mode,
+                AnchorPoint = Vector2New(1, 0),
+                Size = UDim2New(0, 0, 0, 20),
+                BackgroundTransparency = 1,
+                Position = UDim2New(1, 50, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = NewKey.Instance,
+                PaddingRight = UDimNew(0, 55)
+            })
+
+            function NewKey:SetText(Name, Mode)
+                NewKey.Instance.Text = Name
+                NewKeyMode.Instance.Text = Mode
+            end
+
+            function NewKey:Set(Bool)
+                NewKey.Instance.Visible = Bool
+            end
+
+            return NewKey
+        end
+
+        return KeybindList
+    end
+
+    -- Watermark
+    function Fern:Watermark(Name, Icon)
+        local Watermark = { }
+
+        local Items = { } do 
+            Items["Watermark"] = Instances:Create("Frame", {
+                Parent = Fern.Holder.Instance,
+                AnchorPoint = Vector2New(1, 0),
+                Position = UDim2New(1, -8, 0, 8),
+                Size = UDim2New(0, 0, 0, 28),
+                AutomaticSize = Enum.AutomaticSize.X,
+                BackgroundColor3 = FromRGB(29, 29, 29)
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["Watermark"].Instance,
+                PaddingRight = UDimNew(0, 8),
+                PaddingLeft = UDimNew(0, 4)
+            })
+            
+            Instances:Create("UICorner", {
+                Parent = Items["Watermark"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["Watermark"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["Logo"] = Instances:Create("ImageLabel", {
+                Parent = Items["Watermark"].Instance,
+                ImageColor3 = FromRGB(0, 102, 51),
+                ScaleType = Enum.ScaleType.Fit,
+                AnchorPoint = Vector2New(0, 0.5),
+                Image = Icon or Fern:GetGitHubImage(Fern.GitHub.Images.Logo),
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 0, 0.5, 0),
+                Size = UDim2New(0, 20, 0, 20)
+            })
+            Items["Logo"]:AddToTheme({ImageColor3 = "Accent"})
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Watermark"].Instance,
+                FontFace = Fern.Font,
+                RichText = true,
+                TextColor3 = FromRGB(74, 74, 74),
+                Text = Name,
+                Size = UDim2New(0, 0, 0, 15),
+                AnchorPoint = Vector2New(0, 0.5),
+                BorderSizePixel = 0,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 28, 0.5, -2),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+        end
+
+        function Watermark:SetText(Text)
+            Items["Text"].Instance.Text = tostring(Text)
+        end
+
+        function Watermark:SetVisibility(Bool)
+            Items["Watermark"].Instance.Visible = Bool
+        end
+
+        return Watermark 
+    end
+
+    -- Settings Page
+    function Fern:CreateSettingsPage(Window, KeybindList, Watermark)
+        local SettingsPage = Window:Page({Icon = Fern:GetGitHubImage(Fern.GitHub.Images.Icon)})
+        
+        local MenuSubPage = SettingsPage:SubPage({Name = "Menu"})
+        local ConfigsSubPage = SettingsPage:SubPage({Name = "Configs"})
+
+        -- Menu settings
+        local MenuSection = MenuSubPage:Section({Name = "Menu"})
+        MenuSection:Toggle({
+            Name = "Keybind List",
+            Flag = "KeybindList",
+            Default = true,
+            Callback = function(Value)
+                KeybindList:SetVisibility(Value)
+            end
+        })
+
+        MenuSection:Toggle({
+            Name = "Watermark",
+            Flag = "Watermark",
+            Default = true,
+            Callback = function(Value)
+                Watermark:SetVisibility(Value)
+            end
+        })
+
+        MenuSection:Slider({
+            Name = "Animation Speed",
+            Flag = "AnimSpeed",
+            Default = Fern.FadeSpeed,
+            Min = 0,
+            Max = 2,
+            Decimals = 0.01,
+            Callback = function(Value)
+                Fern.FadeSpeed = Value
+            end
+        })
+
+        MenuSection:Button({
+            Name = "Unload UI",
+            Callback = function()
+                Fern:Unload()
+            end
+        })
+
+        -- Configs
+        local ConfigsSection = ConfigsSubPage:Section({Name = "Profiles"})
+        local ConfigName = ""
+        local ConfigSelected = ""
+        
+        local ConfigsSearchbox = ConfigsSection:Searchbox({
+            Name = "Profiles List",
+            Flag = "ProfilesList",
+            Multi = false,
+            Items = {},
+            Callback = function(Value)
+                ConfigSelected = Value or ""
+            end
+        })
+
+        ConfigsSection:Textbox({
+            Name = "Config Name",
+            Default = "",
+            Flag = "ConfigName",
+            Placeholder = "Enter name...",
+            Callback = function(Value)
+                ConfigName = Value
+            end
+        })
+
+        ConfigsSection:Button({
+            Name = "Create",
+            Callback = function()
+                if ConfigName ~= "" then
+                    local Path = Fern.Folders.Configs .. "/" .. ConfigName .. ".json"
+                    if not isfile(Path) then
+                        writefile(Path, Fern:GetConfig())
+                        Fern:RefreshConfigsList(ConfigsSearchbox)
+                        Fern:Notification("Created config: " .. ConfigName, 3, Fern.Theme.Accent)
+                    end
+                end
+            end
+        })
+
+        ConfigsSection:Button({
+            Name = "Delete",
+            Callback = function()
+                if ConfigSelected ~= "" then
+                    delfile(Fern.Folders.Configs .. "/" .. ConfigSelected .. ".json")
+                    Fern:RefreshConfigsList(ConfigsSearchbox)
+                    Fern:Notification("Deleted config: " .. ConfigSelected, 3, Fern.Theme.Accent)
+                end
+            end
+        })
+
+        ConfigsSection:Button({
+            Name = "Load",
+            Callback = function()
+                if ConfigSelected ~= "" then
+                    local Success, Result = pcall(function()
+                        Fern:LoadConfig(readfile(Fern.Folders.Configs .. "/" .. ConfigSelected .. ".json"))
+                    end)
+                    if Success then
+                        Fern:Notification("Loaded config: " .. ConfigSelected, 3, Fern.Theme.Accent)
+                    else
+                        Fern:Notification("Failed to load config", 3, FromRGB(255, 0, 0))
+                    end
+                end
+            end
+        })
+
+        ConfigsSection:Button({
+            Name = "Save",
+            Callback = function()
+                if ConfigSelected ~= "" then
+                    writefile(Fern.Folders.Configs .. "/" .. ConfigSelected .. ".json", Fern:GetConfig())
+                    Fern:Notification("Saved config: " .. ConfigSelected, 3, Fern.Theme.Accent)
+                end
+            end
+        })
+
+        ConfigsSection:Button({
+            Name = "Refresh",
+            Callback = function()
+                Fern:RefreshConfigsList(ConfigsSearchbox)
+            end
+        })
+
+        Fern:RefreshConfigsList(ConfigsSearchbox)
+    end
+
+    -- Textbox
+    function Fern.Sections:Textbox(Data)
+        Data = Data or { }
+
+        local Textbox = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or "",
+            Callback = Data.Callback or Data.callback or function() end,
+            Placeholder = Data.Placeholder or Data.placeholder or "Placeholder",
+            Numeric = Data.Numeric or Data.numeric or false,
+            Finished = Data.Finished or Data.finished or false,
+            Value = ""
+        }
+
+        local Items = { } do
+            Items["Textbox"] = Instances:Create("Frame", {
+                Parent = Textbox.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 0, 20),
+                BorderSizePixel = 0
+            })
+            
+            Items["Input"] = Instances:Create("TextBox", {
+                Parent = Items["Textbox"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = "",
+                ClipsDescendants = true,
+                Size = UDim2New(1, -50, 1, 0),
+                Position = UDim2New(0, 17, 0, 0),
+                PlaceholderColor3 = FromRGB(74, 74, 74),
+                PlaceholderText = Textbox.Placeholder,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextSize = 14,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Instances:Create("UIPadding", {
+                Parent = Items["Input"].Instance,
+                PaddingLeft = UDimNew(0, 8)
+            })
+        end
+        
+        function Textbox:Get()
+            return Textbox.Value
+        end
+
+        function Textbox:SetVisibility(Bool)
+            Items["Textbox"].Instance.Visible = Bool
+        end
+
+        function Textbox:Set(Value)
+            if Textbox.Numeric and tonumber(Value) == nil and #Value > 0 then
+                return
+            end
+
+            Textbox.Value = Value
+            Items["Input"].Instance.Text = Value
+            Fern.Flags[Textbox.Flag] = Value
+            Fern:SafeCall(Textbox.Callback, Value)
+        end
+        
+        if Textbox.Finished then 
+            Items["Input"]:Connect("FocusLost", function(EnterPressed)
+                if EnterPressed then
+                    Textbox:Set(Items["Input"].Instance.Text)
+                end
+            end)
+        else
+            Items["Input"].Instance:GetPropertyChangedSignal("Text"):Connect(function()
+                Textbox:Set(Items["Input"].Instance.Text)
+            end)
+        end
+
+        if Textbox.Default then
+            Textbox:Set(Textbox.Default)
+        end
+
+        Fern.SetFlags[Textbox.Flag] = function(Value)
+            Textbox:Set(Value)
+        end
+
+        return Textbox
+    end
+
+    -- Dropdown
+    function Fern.Sections:Dropdown(Data)
+        Data = Data or { }
+
+        local Dropdown = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Data.Name or Data.name or "Dropdown",
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or "",
+            Multi = Data.Multi or Data.multi or false,
+            Items = Data.Items or Data.items or {},
+            Callback = Data.Callback or Data.callback or function() end,
+            Options = {},
+            Value = {},
+            IsOpen = false
+        }
+
+        local Items = { } do 
+            Items["Dropdown"] = Instances:Create("Frame", {
+                Parent = Dropdown.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 38),
+                BorderSizePixel = 0
+            })
+            
+            Items["Indicator"] = Instances:Create("TextButton", {
+                Parent = Items["Dropdown"].Instance,
+                Text = "",
+                AutoButtonColor = false,
+                Position = UDim2New(0, 17, 0, 17),
+                Size = UDim2New(1, -50, 0, 21),
+                BorderSizePixel = 2,
+                BackgroundColor3 = FromRGB(20, 20, 20),
+                ClipsDescendants = true,
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["Indicator"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["Value"] = Instances:Create("TextLabel", {
+                Parent = Items["Indicator"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(74, 74, 74),
+                Text = "--",
+                Size = UDim2New(0.018518518656492233, 0, 0.8333333134651184, 0),
+                AnchorPoint = Vector2New(0, 0.5),
+                Position = UDim2New(0, 6, 0.4166666567325592, 0),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                TextSize = 14
+            })
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["Dropdown"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = Dropdown.Name,
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(0, 17, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+
+            Items["DropdownHolder"] = Instances:Create("Frame", {
+                Parent = Fern.UnusedHolder.Instance,
+                Size = UDim2New(0, 216, 0, 25),
+                Position = UDim2New(0, 253, 0, 84),
+                BorderSizePixel = 2,
+                Visible = false,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["DropdownHolder"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Instances:Create("UIListLayout", {
+                Parent = Items["DropdownHolder"].Instance,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })            
+            
+            Items["Indicator"]:OnHover(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = Fern:GetLighterColor(FromRGB(20, 20, 20), 1.45)})
+            end)
+
+            Items["Indicator"]:OnHoverLeave(function()
+                Items["Indicator"]:Tween(nil, {BackgroundColor3 = FromRGB(20, 20, 20)})
+            end)
+        end
+        
+        local Debounce = false
+        local RenderStepped  
+
+        function Dropdown:SetOpen(Bool)
+            if Debounce then return end
+            Dropdown.IsOpen = Bool
+            Debounce = true 
+
+            if Dropdown.IsOpen then 
+                Items["DropdownHolder"].Instance.Visible = true
+                Items["DropdownHolder"].Instance.Parent = Fern.Holder.Instance
+                
+                RenderStepped = RunService.RenderStepped:Connect(function()
+                    Items["DropdownHolder"].Instance.Position = UDim2New(
+                        0, 
+                        Items["Indicator"].Instance.AbsolutePosition.X, 
+                        0, 
+                        Items["Indicator"].Instance.AbsolutePosition.Y + Items["Indicator"].Instance.AbsoluteSize.Y * 3 + 19
+                    )
+                    Items["DropdownHolder"].Instance.Size = UDim2New(0, Items["Indicator"].Instance.AbsoluteSize.X, 0, 0)
+                end)
+
+                for _, Frame in Fern.OpenFrames do 
+                    if Frame.SetOpen then Frame:SetOpen(false) end
+                end
+
+                Fern.OpenFrames[Dropdown] = Dropdown 
+            else
+                Fern.OpenFrames[Dropdown] = nil
+                if RenderStepped then 
+                    RenderStepped:Disconnect()
+                    RenderStepped = nil
+                end
+            end
+
+            local Descendants = Items["DropdownHolder"].Instance:GetDescendants()
+            TableInsert(Descendants, Items["DropdownHolder"].Instance)
+
+            for _, Value in Descendants do 
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then 
+                        for _, Prop in Props do 
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+            
+            task.delay(Fern.FadeSpeed + 0.1, function()
+                Debounce = false 
+                Items["DropdownHolder"].Instance.Visible = Dropdown.IsOpen
+                task.wait(0.2)
+                Items["DropdownHolder"].Instance.Parent = not Dropdown.IsOpen and Fern.UnusedHolder.Instance or Fern.Holder.Instance
+            end)
+        end
+
+        function Dropdown:SetVisibility(Bool)
+            Items["Dropdown"].Instance.Visible = Bool
+        end
+
+        function Dropdown:Add(Option)
+            local OptionItems = { } do 
+                OptionItems["Disabled"] = Instances:Create("TextButton", {
+                    Parent = Items["DropdownHolder"].Instance,
+                    Text = "",
+                    AutoButtonColor = false,
+                    FontFace = Fern.Font,
+                    TextTransparency = 1,
+                    Size = UDim2New(1, 0, 0, 25),
+                    Selectable = true,
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    Active = true,
+                    TextSize = 14
+                })
+                
+                OptionItems["Accent1"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    BackgroundTransparency = 1,
+                    Size = UDim2New(0, 1, 0, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Position = UDim2New(0, 0, 0.5, 0),
+                    ZIndex = 2,
+                    BorderSizePixel = 0
+                })
+                OptionItems["Accent1"]:AddToTheme({BackgroundColor3 = "Accent"})
+                
+                OptionItems["Accent2"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 1, 0.5, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    ZIndex = 2,
+                    BorderSizePixel = 0
+                })
+                OptionItems["Accent2"]:AddToTheme({BackgroundColor3 = "DarkAccent"})
+                
+                OptionItems["Text"] = Instances:Create("TextLabel", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    FontFace = Fern.Font,
+                    TextColor3 = FromRGB(74, 74, 74),
+                    Text = Option,
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Size = UDim2New(0, 0, 0, 15),
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 10, 0.5, -2),
+                    AutomaticSize = Enum.AutomaticSize.X,
+                    TextSize = 14
+                })
+                OptionItems["Text"]:AddToTheme({TextColor3 = function()
+                    return FromRGB(74, 74, 74)
+                end})
+                
+                OptionItems["Background"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    Size = UDim2New(1, 0, 1, 0),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })
+            end
+            
+            local OptionData = {
+                Button = OptionItems["Disabled"],
+                Accent1 = OptionItems["Accent1"],
+                Accent2 = OptionItems["Accent2"],
+                Text = OptionItems["Text"],
+                Background = OptionItems["Background"],
+                Name = Option,
+                Selected = false
+            }
+
+            function OptionData:Toggle(Status)
+                if Status == "Active" then 
+                    OptionData.Accent1:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 1, 1, 0)})
+                    OptionData.Accent2:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 1, 1, 0)})
+                    OptionData.Text:ChangeItemTheme({TextColor3 = "Accent"})
+                    OptionData.Text:Tween(nil, {TextColor3 = Fern.Theme.Accent})
+                    OptionData.Background:Tween(nil, {BackgroundTransparency = 0})
+                else
+                    OptionData.Accent1:Tween(nil, {BackgroundTransparency = 1, Size = UDim2New(0, 1, 0, 0)})
+                    OptionData.Accent2:Tween(nil, {BackgroundTransparency = 1, Size = UDim2New(0, 1, 0, 0)})
+                    OptionData.Text:ChangeItemTheme({TextColor3 = function()
+                        return FromRGB(74, 74, 74)
+                    end})
+                    OptionData.Text:Tween(nil, {TextColor3 = FromRGB(74, 74, 74)})
+                    OptionData.Background:Tween(nil, {BackgroundTransparency = 1})
+                end
+            end
+
+            function OptionData:OnHover()
+                if OptionData.Selected then return end
+                OptionData.Text:Tween(nil, {TextColor3 = FromRGB(126, 126, 126)})
+            end
+
+            function OptionData:OnHoverLeave()
+                if OptionData.Selected then return end
+                OptionData.Text:Tween(nil, {TextColor3 = FromRGB(74, 74, 74)})
+            end
+
+            OptionData.Button:OnHover(OptionData.OnHover)
+            OptionData.Button:OnHoverLeave(OptionData.OnHoverLeave)
+
+            function OptionData:Set()
+                OptionData.Selected = not OptionData.Selected
+
+                if Dropdown.Multi then 
+                    local Index = TableFind(Dropdown.Value, OptionData.Name)
+                    if Index then 
+                        TableRemove(Dropdown.Value, Index)
+                    else
+                        TableInsert(Dropdown.Value, OptionData.Name)
+                    end
+                    OptionData:Toggle(Index and "Inactive" or "Active")
+                    Fern.Flags[Dropdown.Flag] = Dropdown.Value
+                    local TextFormat = #Dropdown.Value > 0 and TableConcat(Dropdown.Value, ", ") or "--"
+                    Items["Value"].Instance.Text = TextFormat
+                else
+                    if OptionData.Selected then 
+                        Dropdown.Value = OptionData.Name
+                        Fern.Flags[Dropdown.Flag] = OptionData.Name
+                        OptionData:Toggle("Active")
+                        for _, Value in Dropdown.Options do 
+                            if Value ~= OptionData then
+                                Value.Selected = false 
+                                Value:Toggle("Inactive")
+                            end
+                        end
+                        Items["Value"].Instance.Text = OptionData.Name
+                    else
+                        Dropdown.Value = nil
+                        Fern.Flags[Dropdown.Flag] = nil
+                        OptionData:Toggle("Inactive")
+                        Items["Value"].Instance.Text = "--"
+                    end
+                end
+
+                Fern:SafeCall(Dropdown.Callback, Dropdown.Value)
+            end
+
+            OptionData.Button:Connect("MouseButton1Down", function()
+                OptionData:Set()
+            end)
+
+            Dropdown.Options[OptionData.Name] = OptionData
+            return OptionData
+        end
+
+        function Dropdown:Set(Option)
+            if Dropdown.Multi then 
+                if type(Option) ~= "table" then return end
+                Dropdown.Value = Option
+                Fern.Flags[Dropdown.Flag] = Option
+                for _, Value in Option do
+                    local OptionData = Dropdown.Options[Value]
+                    if OptionData then
+                        OptionData.Selected = true 
+                        OptionData:Toggle("Active")
+                    end
+                end
+                Items["Value"].Instance.Text = TableConcat(Option, ", ")
+            else
+                if not Dropdown.Options[Option] then return end
+                local OptionData = Dropdown.Options[Option]
+                Dropdown.Value = Option
+                Fern.Flags[Dropdown.Flag] = Option
+                for _, Value in Dropdown.Options do
+                    if Value ~= OptionData then
+                        Value.Selected = false 
+                        Value:Toggle("Inactive")
+                    else
+                        Value.Selected = true 
+                        Value:Toggle("Active")
+                    end
+                end
+                Items["Value"].Instance.Text = Option
+            end
+            Fern:SafeCall(Dropdown.Callback, Dropdown.Value)
+        end
+
+        function Dropdown:Remove(Option)
+            if Dropdown.Options[Option] then
+                Dropdown.Options[Option].Button:Clean()
+                Dropdown.Options[Option] = nil
+            end
+        end
+
+        function Dropdown:Refresh(List)
+            for _, Value in Dropdown.Options do 
+                Dropdown:Remove(Value.Name)
+            end
+            for _, Value in List do 
+                Dropdown:Add(Value)
+            end
+        end
+
+        Items["Indicator"]:Connect("Changed", function(Property)
+            if Property == "AbsolutePosition" and Dropdown.IsOpen then
+                Dropdown.IsOpen = not Fern:IsMouseOverFrame(Items["DropdownHolder"])
+                Items["DropdownHolder"].Instance.Visible = Dropdown.IsOpen
+            end
+        end)
+
+        Items["Indicator"]:Connect("MouseButton1Down", function()
+            Dropdown:SetOpen(not Dropdown.IsOpen)
+        end)
+
+        Fern:Connect(UserInputService.InputBegan, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 and Dropdown.IsOpen then
+                if not Fern:IsMouseOverFrame(Items["DropdownHolder"]) then 
+                    Dropdown:SetOpen(false)
+                end
+            end
+        end)
+
+        for _, Value in Dropdown.Items do
+            Dropdown:Add(Value)
+        end
+
+        if Dropdown.Default then 
+            Dropdown:Set(Dropdown.Default)
+        end
+
+        Fern.SetFlags[Dropdown.Flag] = function(Value)
+            Dropdown:Set(Value)
+        end
+
+        return Dropdown
+    end
+
+    -- Searchbox (Dropdown with search)
+    function Fern.Sections:Searchbox(Data)
+        Data = Data or { }
+
+        local Dropdown = {
+            Window = self.Window,
+            Page = self.Page,
+            Section = self,
+            Name = Data.Name or Data.name or "Search",
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or "",
+            Multi = Data.Multi or Data.multi or false,
+            Items = Data.Items or Data.items or {},
+            Callback = Data.Callback or Data.callback or function() end,
+            Options = {},
+            Value = {},
+            IsOpen = false
+        }
+
+        local Items = { } do 
+            Items["List"] = Instances:Create("Frame", {
+                Parent = Dropdown.Section.Items["ElementsHolder"].Instance,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 0, 200),
+                BorderSizePixel = 0
+            })
+            
+            Items["Text"] = Instances:Create("TextLabel", {
+                Parent = Items["List"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = Dropdown.Name,
+                Size = UDim2New(0, 0, 0, 13),
+                Position = UDim2New(0, 17, 0, -2),
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 14
+            })
+            
+            Items["ListBackground"] = Instances:Create("Frame", {
+                Parent = Items["List"].Instance,
+                Position = UDim2New(0, 17, 0, 22),
+                Size = UDim2New(1, -50, 1, -22),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(0, 0, 0)
+            })
+            
+            Items["Search"] = Instances:Create("Frame", {
+                Parent = Items["ListBackground"].Instance,
+                Position = UDim2New(0, 1, 0, 1),
+                Size = UDim2New(1, -2, 0, 20),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20)
+            })
+            
+            Items["Input"] = Instances:Create("TextBox", {
+                Parent = Items["Search"].Instance,
+                FontFace = Fern.Font,
+                TextColor3 = FromRGB(221, 221, 221),
+                Text = "",
+                Size = UDim2New(1, -16, 1, 0),
+                Position = UDim2New(0, 8, 0, 0),
+                ClipsDescendants = true,
+                BorderSizePixel = 0,
+                BackgroundTransparency = 1,
+                PlaceholderColor3 = FromRGB(74, 74, 74),
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextSize = 14
+            })
+            
+            Items["ListInline"] = Instances:Create("Frame", {
+                Parent = Items["ListBackground"].Instance,
+                Position = UDim2New(0, 2, 0, 22),
+                Size = UDim2New(1, -4, 1, -24),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(18, 18, 18)
+            })
+            
+            Instances:Create("UIStroke", {
+                Parent = Items["ListInline"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+            
+            Items["OptionHolder"] = Instances:Create("ScrollingFrame", {
+                Parent = Items["ListInline"].Instance,
+                ScrollBarImageColor3 = FromRGB(0, 0, 0),
+                Active = true,
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 0,
+                BackgroundTransparency = 1,
+                Size = UDim2New(1, 0, 1, 0),
+                CanvasSize = UDim2New(0, 0, 0, 0)
+            })
+            
+            Instances:Create("UIListLayout", {
+                Parent = Items["OptionHolder"].Instance,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+        end
+
+        function Dropdown:SetVisibility(Bool)
+            Items["List"].Instance.Visible = Bool
+        end
+
+        function Dropdown:Add(Option)
+            local OptionItems = { } do 
+                OptionItems["Disabled"] = Instances:Create("TextButton", {
+                    Parent = Items["OptionHolder"].Instance,
+                    Text = "",
+                    AutoButtonColor = false,
+                    FontFace = Fern.Font,
+                    TextTransparency = 1,
+                    Size = UDim2New(1, 0, 0, 25),
+                    Selectable = true,
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    Active = true,
+                    TextSize = 14
+                })
+                
+                OptionItems["Accent1"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    BackgroundTransparency = 1,
+                    Size = UDim2New(0, 1, 0, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Position = UDim2New(0, 0, 0.5, 0),
+                    ZIndex = 1,
+                    BorderSizePixel = 0
+                })
+                OptionItems["Accent1"]:AddToTheme({BackgroundColor3 = "Accent"})
+                
+                OptionItems["Accent2"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 1, 0.5, 0),
+                    AnchorPoint = Vector2New(0, 0.5),
+                    ZIndex = 1,
+                    BorderSizePixel = 0
+                })
+                OptionItems["Accent2"]:AddToTheme({BackgroundColor3 = "DarkAccent"})
+                
+                OptionItems["Text"] = Instances:Create("TextLabel", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    FontFace = Fern.Font,
+                    TextColor3 = FromRGB(74, 74, 74),
+                    Text = Option,
+                    AnchorPoint = Vector2New(0, 0.5),
+                    Size = UDim2New(0, 0, 0, 15),
+                    BackgroundTransparency = 1,
+                    Position = UDim2New(0, 10, 0.5, -2),
+                    AutomaticSize = Enum.AutomaticSize.X,
+                    TextSize = 14
+                })
+                OptionItems["Text"]:AddToTheme({TextColor3 = function()
+                    return FromRGB(74, 74, 74)
+                end})
+                
+                OptionItems["Background"] = Instances:Create("Frame", {
+                    Parent = OptionItems["Disabled"].Instance,
+                    Size = UDim2New(1, 0, 1, 0),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(255, 255, 255)
+                })
+            end
+            
+            local OptionData = {
+                Button = OptionItems["Disabled"],
+                Accent1 = OptionItems["Accent1"],
+                Accent2 = OptionItems["Accent2"],
+                Text = OptionItems["Text"],
+                Background = OptionItems["Background"],
+                Name = Option,
+                Selected = false
+            }
+
+            function OptionData:Toggle(Status)
+                if Status == "Active" then 
+                    OptionData.Accent1:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 1, 1, 0)})
+                    OptionData.Accent2:Tween(nil, {BackgroundTransparency = 0, Size = UDim2New(0, 1, 1, 0)})
+                    OptionData.Text:ChangeItemTheme({TextColor3 = "Accent"})
+                    OptionData.Text:Tween(nil, {TextColor3 = Fern.Theme.Accent})
+                    OptionData.Background:Tween(nil, {BackgroundTransparency = 0})
+                else
+                    OptionData.Accent1:Tween(nil, {BackgroundTransparency = 1, Size = UDim2New(0, 1, 0, 0)})
+                    OptionData.Accent2:Tween(nil, {BackgroundTransparency = 1, Size = UDim2New(0, 1, 0, 0)})
+                    OptionData.Text:ChangeItemTheme({TextColor3 = function()
+                        return FromRGB(74, 74, 74)
+                    end})
+                    OptionData.Text:Tween(nil, {TextColor3 = FromRGB(74, 74, 74)})
+                    OptionData.Background:Tween(nil, {BackgroundTransparency = 1})
+                end
+            end
+
+            function OptionData:OnHover()
+                if OptionData.Selected then return end
+                OptionData.Text:Tween(nil, {TextColor3 = FromRGB(126, 126, 126)})
+            end
+
+            function OptionData:OnHoverLeave()
+                if OptionData.Selected then return end
+                OptionData.Text:Tween(nil, {TextColor3 = FromRGB(74, 74, 74)})
+            end
+
+            OptionData.Button:OnHover(OptionData.OnHover)
+            OptionData.Button:OnHoverLeave(OptionData.OnHoverLeave)
+
+            function OptionData:Set()
+                OptionData.Selected = not OptionData.Selected
+
+                if Dropdown.Multi then 
+                    local Index = TableFind(Dropdown.Value, OptionData.Name)
+                    if Index then 
+                        TableRemove(Dropdown.Value, Index)
+                    else
+                        TableInsert(Dropdown.Value, OptionData.Name)
+                    end
+                    OptionData:Toggle(Index and "Inactive" or "Active")
+                    Fern.Flags[Dropdown.Flag] = Dropdown.Value
+                else
+                    if OptionData.Selected then 
+                        Dropdown.Value = OptionData.Name
+                        Fern.Flags[Dropdown.Flag] = OptionData.Name
+                        OptionData:Toggle("Active")
+                        for _, Value in Dropdown.Options do 
+                            if Value ~= OptionData then
+                                Value.Selected = false 
+                                Value:Toggle("Inactive")
+                            end
+                        end
+                    else
+                        Dropdown.Value = nil
+                        Fern.Flags[Dropdown.Flag] = nil
+                        OptionData:Toggle("Inactive")
+                    end
+                end
+
+                Fern:SafeCall(Dropdown.Callback, Dropdown.Value)
+            end
+
+            OptionData.Button:Connect("MouseButton1Down", function()
+                OptionData:Set()
+            end)
+
+            Dropdown.Options[OptionData.Name] = OptionData
+            return OptionData
+        end
+
+        function Dropdown:Set(Option)
+            if Dropdown.Multi then 
+                if type(Option) ~= "table" then return end
+                Dropdown.Value = Option
+                Fern.Flags[Dropdown.Flag] = Option
+                for _, Value in Option do
+                    local OptionData = Dropdown.Options[Value]
+                    if OptionData then
+                        OptionData.Selected = true 
+                        OptionData:Toggle("Active")
+                    end
+                end
+            else
+                if not Dropdown.Options[Option] then return end
+                local OptionData = Dropdown.Options[Option]
+                Dropdown.Value = Option
+                Fern.Flags[Dropdown.Flag] = Option
+                for _, Value in Dropdown.Options do
+                    if Value ~= OptionData then
+                        Value.Selected = false 
+                        Value:Toggle("Inactive")
+                    else
+                        Value.Selected = true 
+                        Value:Toggle("Active")
+                    end
+                end
+            end
+            Fern:SafeCall(Dropdown.Callback, Dropdown.Value)
+        end
+
+        function Dropdown:Remove(Option)
+            if Dropdown.Options[Option] then
+                Dropdown.Options[Option].Button:Clean()
+                Dropdown.Options[Option] = nil
+            end
+        end
+
+        function Dropdown:Refresh(List)
+            for _, Value in Dropdown.Options do 
+                Dropdown:Remove(Value.Name)
+            end
+            for _, Value in List do 
+                Dropdown:Add(Value)
+            end
+        end
+
+        local SearchStepped
+
+        Items["Input"]:Connect("Focused", function()
+            SearchStepped = RunService.RenderStepped:Connect(function()
+                for _, Value in Dropdown.Options do
+                    if StringFind(StringLower(Value.Name), StringLower(Items["Input"].Instance.Text)) then
+                        Value.Button.Instance.Visible = true
+                    else
+                        Value.Button.Instance.Visible = false
+                    end
+                end
+            end)
+        end)
+
+        Items["Input"]:Connect("FocusLost", function()
+            if SearchStepped then
+                SearchStepped:Disconnect()
+                SearchStepped = nil
+            end
+        end)
+
+        for _, Value in Dropdown.Items do
+            Dropdown:Add(Value)
+        end
+
+        if Dropdown.Default then 
+            Dropdown:Set(Dropdown.Default)
+        end
+
+        Fern.SetFlags[Dropdown.Flag] = function(Value)
+            Dropdown:Set(Value)
+        end
+
+        return Dropdown
+    end
+
+    -- Return the library
     return Fern
 end
+
+-- ============================================
+-- USAGE EXAMPLE
+-- ============================================
+
+local Window = Fern:Window({
+    Logo = Fern:GetGitHubImage("fern%20logo.png"),
+    Build = "v1.0.0"
+})
+
+local KeybindList = Fern:KeybindList()
+local Watermark = Fern:Watermark("Fern UI", Fern:GetGitHubImage("fern%20logo.png"))
+
+-- Main Page
+local MainPage = Window:Page({Icon = Fern:GetGitHubImage("fern%20logo.png")})
+local MainSection = MainPage:Section({Name = "Main Features"})
+
+MainSection:Toggle({
+    Name = "Example Toggle",
+    Flag = "example_toggle",
+    Default = false,
+    Callback = function(Value)
+        print("Toggle:", Value)
+    end
+})
+
+MainSection:Button({
+    Name = "Example Button",
+    Callback = function()
+        Fern:Notification("Button clicked!", 3, Fern.Theme.Accent)
+    end
+})
+
+MainSection:Slider({
+    Name = "Example Slider",
+    Flag = "example_slider",
+    Default = 50,
+    Min = 0,
+    Max = 100,
+    Decimals = 1,
+    Suffix = "%",
+    Callback = function(Value)
+        print("Slider:", Value)
+    end
+})
+
+MainSection:Label("Fern UI v1.0.0")
+
+-- Settings
+Fern:CreateSettingsPage(Window, KeybindList, Watermark)
+
+-- Notification
+Fern:Notification(string.format("Fern UI loaded in %.4f seconds", os.clock() - LoadingTick), 4, Fern.Theme.Accent)
+
+getgenv().Fern = Fern
+return Fern
