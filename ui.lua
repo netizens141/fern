@@ -1,32 +1,3 @@
---[[
-    Fern UI Library v1.0.0
-    A clean, optimized UI framework for Roblox ethical executors.
-
-    Quick Start:
-        local Fern = loadstring(game:HttpGet("YOUR_URL"))()
-        Fern:ShowSplash(function()
-            local Window = Fern:Window({ Logo = Fern:GetGitHubImage("fern%20logo.png"), Build = "v1.0.0" })
-            local Page = Window:Page({ Icon = Fern:GetGitHubImage("fern%20logo.png") })
-            local Section = Page:Section({ Name = "Example" })
-            Section:Toggle({ Name = "Toggle", Flag = "my_toggle", Default = false, Callback = function(v) end })
-        end)
-
-    API:
-        Fern:Window({ Logo, Build })           -> draggable/resizable window
-        Window:Page({ Icon })                  -> tab page
-        Page:SubPage({ Name })                 -> sub-tab
-        Page:Section({ Name })                 -> scrollable section
-        Section:Toggle/Button/Slider/Label/Textbox/Dropdown/Searchbox(...)
-        Label:Colorpicker({ Flag, Default, Alpha, Callback })
-        Label:Keybind({ Name, Flag, Default, Mode, Callback })
-        Toggle:Colorpicker(...) / Toggle:Keybind(...)
-        Fern:KeybindList() / Fern:Watermark(name, icon)
-        Fern:Notification(text, duration, color)
-        Fern:CreateSettingsPage(window, keybindList, watermark)
-        Fern:GetConfig() / Fern:LoadConfig(json)
-        Fern:Unload()
-]]
-
 local LoadingTick = os.clock() -- Used by example.lua for load timing
 
 if getgenv().Fern then
