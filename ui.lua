@@ -1,9 +1,33 @@
 --[[
-    Fern UI Library v1.0
-    A clean, optimized UI library for Roblox Executors
+    Fern UI Library v1.0.0
+    A clean, optimized UI framework for Roblox ethical executors.
+
+    Quick Start:
+        local Fern = loadstring(game:HttpGet("YOUR_URL"))()
+        Fern:ShowSplash(function()
+            local Window = Fern:Window({ Logo = Fern:GetGitHubImage("fern%20logo.png"), Build = "v1.0.0" })
+            local Page = Window:Page({ Icon = Fern:GetGitHubImage("fern%20logo.png") })
+            local Section = Page:Section({ Name = "Example" })
+            Section:Toggle({ Name = "Toggle", Flag = "my_toggle", Default = false, Callback = function(v) end })
+        end)
+
+    API:
+        Fern:Window({ Logo, Build })           -> draggable/resizable window
+        Window:Page({ Icon })                  -> tab page
+        Page:SubPage({ Name })                 -> sub-tab
+        Page:Section({ Name })                 -> scrollable section
+        Section:Toggle/Button/Slider/Label/Textbox/Dropdown/Searchbox(...)
+        Label:Colorpicker({ Flag, Default, Alpha, Callback })
+        Label:Keybind({ Name, Flag, Default, Mode, Callback })
+        Toggle:Colorpicker(...) / Toggle:Keybind(...)
+        Fern:KeybindList() / Fern:Watermark(name, icon)
+        Fern:Notification(text, duration, color)
+        Fern:CreateSettingsPage(window, keybindList, watermark)
+        Fern:GetConfig() / Fern:LoadConfig(json)
+        Fern:Unload()
 ]]
 
-local LoadingTick = os.clock()
+local LoadingTick = os.clock() -- Used by example.lua for load timing
 
 if getgenv().Fern then
     getgenv().Fern:Unload()
@@ -18,6 +42,7 @@ local Fern do
     local RunService = game:GetService("RunService")
     local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
     local TweenService = game:GetService("TweenService")
+    local Lighting = game:GetService("Lighting")
 
     gethui = gethui or function()
         return CoreGui
@@ -40,6 +65,7 @@ local Fern do
     local Vector2New = Vector2.new
     local MathClamp = math.clamp
     local MathFloor = math.floor
+    local MathMax = math.max
     local TableInsert = table.insert
     local TableFind = table.find
     local TableRemove = table.remove
@@ -88,6 +114,8 @@ local Fern do
         NotifHolder = nil,
         UnusedHolder = nil,
         KeyList = nil,
+        SplashBlur = nil,
+        SplashGui = nil,
         Font = nil,
         SubFont = nil,
         Tween = {
@@ -99,6 +127,8 @@ local Fern do
     }
 
     Fern.__index = Fern
+    Fern.Sections = {}
+    Fern.Pages = {}
     Fern.Sections.__index = Fern.Sections
     Fern.Pages.__index = Fern.Pages
 
@@ -213,7 +243,9 @@ local Fern do
         end
 
         function Tween:FadeItem(Item, Property, Visibility, Speed)
+            if not Item then return end
             Item = Item.Instance or Item
+            if not Item or not Item.Parent then return end
             local OldTransparency = Item[Property]
             Item[Property] = Visibility and 1 or OldTransparency
 
@@ -540,17 +572,47 @@ local Fern do
 
     -- Core Functions
     function Fern:Unload()
-        for _, Connection in self.Connections do 
-            Connection.Connection:Disconnect()
+        for _, Frame in self.OpenFrames do
+            if Frame.SetOpen then
+                Frame:SetOpen(false)
+            end
         end
+        self.OpenFrames = {}
+
+        for _, Connection in self.Connections do 
+            if Connection.Connection then
+                Connection.Connection:Disconnect()
+            end
+        end
+        self.Connections = {}
 
         for _, Thread in self.Threads do 
-            coroutine.close(Thread)
+            pcall(coroutine.close, Thread)
+        end
+        self.Threads = {}
+
+        if self.SplashBlur then
+            self.SplashBlur:Destroy()
+            self.SplashBlur = nil
+        end
+
+        if self.SplashGui then
+            self.SplashGui:Clean()
+            self.SplashGui = nil
+        end
+
+        if self.UnusedHolder then
+            self.UnusedHolder:Clean()
+            self.UnusedHolder = nil
         end
 
         if self.Holder then 
             self.Holder:Clean()
+            self.Holder = nil
         end
+
+        self.Flags = {}
+        self.SetFlags = {}
 
         Fern = nil 
         getgenv().Fern = nil
@@ -656,6 +718,218 @@ local Fern do
                MousePosition.X <= Frame.AbsolutePosition.X + Frame.AbsoluteSize.X and 
                MousePosition.Y >= Frame.AbsolutePosition.Y and 
                MousePosition.Y <= Frame.AbsolutePosition.Y + Frame.AbsoluteSize.Y
+    end
+
+    function Fern:GetViewportSize()
+        local Camera = Workspace.CurrentCamera
+        return Camera and Camera.ViewportSize or Vector2New(1920, 1080)
+    end
+
+    function Fern:PositionPopup(Popup, Anchor, Gap)
+        Popup = Popup.Instance or Popup
+        Anchor = Anchor.Instance or Anchor
+        Gap = Gap or 4
+
+        local Viewport = self:GetViewportSize()
+        local AnchorPos = Anchor.AbsolutePosition
+        local AnchorSize = Anchor.AbsoluteSize
+        local PopupSize = Popup.AbsoluteSize
+
+        local X = AnchorPos.X
+        local Y = AnchorPos.Y + AnchorSize.Y + Gap
+
+        if Y + PopupSize.Y > Viewport.Y - 4 then
+            Y = AnchorPos.Y - PopupSize.Y - Gap
+        end
+
+        X = MathClamp(X, 4, MathMax(4, Viewport.X - PopupSize.X - 4))
+        Y = MathClamp(Y, 4, MathMax(4, Viewport.Y - PopupSize.Y - 4))
+
+        Popup.Position = UDim2FromOffset(X, Y)
+    end
+
+    function Fern:ColorToHex(Color)
+        return string.format("%02X%02X%02X", MathFloor(Color.R * 255), MathFloor(Color.G * 255), MathFloor(Color.B * 255))
+    end
+
+    function Fern:HexToColor(Hex)
+        Hex = StringGSub(tostring(Hex), "#", "")
+        if StringLen(Hex) ~= 6 then
+            return FromRGB(255, 255, 255)
+        end
+        return FromHex("#" .. Hex)
+    end
+
+    function Fern:GetKeyName(Key)
+        Key = tostring(Key)
+        local Short = StringGSub(Key, "Enum%.KeyCode%.", "")
+        Short = StringGSub(Short, "Enum%.UserInputType%.", "")
+        return Keys[Short] or Short
+    end
+
+    function Fern:ParseInputEnum(Value)
+        if typeof(Value) == "EnumItem" then
+            return Value
+        end
+
+        Value = tostring(Value)
+        local EnumType, Name = Value:match("Enum%.(%w+)%.(%w+)")
+        if EnumType == "KeyCode" and Enum.KeyCode[Name] then
+            return Enum.KeyCode[Name]
+        end
+        if EnumType == "UserInputType" and Enum.UserInputType[Name] then
+            return Enum.UserInputType[Name]
+        end
+        return Enum.KeyCode.Unknown
+    end
+
+    function Fern:ShowSplash(Callback, Duration)
+        Duration = Duration or 5
+
+        if self.SplashBlur then
+            self.SplashBlur:Destroy()
+        end
+        if self.SplashGui then
+            self.SplashGui:Clean()
+        end
+
+        self.Holder.Instance.Enabled = false
+
+        local Blur = InstanceNew("BlurEffect")
+        Blur.Name = "FernSplashBlur"
+        Blur.Size = 0
+        Blur.Parent = Lighting
+        self.SplashBlur = Blur
+
+        TweenService:Create(Blur, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = 24
+        }):Play()
+
+        local Splash = Instances:Create("ScreenGui", {
+            Parent = gethui(),
+            Name = "FernSplash",
+            ZIndexBehavior = Enum.ZIndexBehavior.Global,
+            DisplayOrder = 999,
+            IgnoreGuiInset = true,
+            ResetOnSpawn = false
+        })
+        self.SplashGui = Splash
+
+        local Overlay = Instances:Create("Frame", {
+            Parent = Splash.Instance,
+            Size = UDim2New(1, 0, 1, 0),
+            BackgroundColor3 = FromRGB(0, 0, 0),
+            BackgroundTransparency = 0.35,
+            BorderSizePixel = 0
+        })
+
+        local Container = Instances:Create("Frame", {
+            Parent = Overlay.Instance,
+            AnchorPoint = Vector2New(0.5, 0.5),
+            Position = UDim2New(0.5, 0, 0.5, 0),
+            Size = UDim2FromOffset(220, 180),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0
+        })
+
+        local Logo = Instances:Create("ImageLabel", {
+            Parent = Container.Instance,
+            AnchorPoint = Vector2New(0.5, 0),
+            Position = UDim2New(0.5, 0, 0, 0),
+            Size = UDim2FromOffset(96, 96),
+            BackgroundTransparency = 1,
+            Image = self:GetGitHubImage(self.GitHub.Images.Logo),
+            ImageColor3 = self.Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ImageTransparency = 1
+        })
+
+        local Title = Instances:Create("TextLabel", {
+            Parent = Container.Instance,
+            AnchorPoint = Vector2New(0.5, 0),
+            Position = UDim2New(0.5, 0, 0, 102),
+            Size = UDim2FromOffset(200, 20),
+            BackgroundTransparency = 1,
+            FontFace = self.Font,
+            Text = "Fern",
+            TextColor3 = FromRGB(221, 221, 221),
+            TextSize = 18,
+            TextTransparency = 1
+        })
+
+        local BarBack = Instances:Create("Frame", {
+            Parent = Container.Instance,
+            AnchorPoint = Vector2New(0.5, 0),
+            Position = UDim2New(0.5, 0, 0, 138),
+            Size = UDim2FromOffset(180, 4),
+            BackgroundColor3 = FromRGB(35, 35, 35),
+            BorderSizePixel = 0,
+            BackgroundTransparency = 1
+        })
+
+        Instances:Create("UICorner", {
+            Parent = BarBack.Instance,
+            CornerRadius = UDimNew(1, 0)
+        })
+
+        local BarFill = Instances:Create("Frame", {
+            Parent = BarBack.Instance,
+            Size = UDim2New(0, 0, 1, 0),
+            BackgroundColor3 = self.Theme.Accent,
+            BorderSizePixel = 0
+        })
+        BarFill:AddToTheme({BackgroundColor3 = "Accent"})
+
+        Instances:Create("UICorner", {
+            Parent = BarFill.Instance,
+            CornerRadius = UDimNew(1, 0)
+        })
+
+        local Status = Instances:Create("TextLabel", {
+            Parent = Container.Instance,
+            AnchorPoint = Vector2New(0.5, 0),
+            Position = UDim2New(0.5, 0, 0, 152),
+            Size = UDim2FromOffset(200, 16),
+            BackgroundTransparency = 1,
+            FontFace = self.Font,
+            Text = "Loading...",
+            TextColor3 = FromRGB(119, 119, 119),
+            TextSize = 13,
+            TextTransparency = 1
+        })
+
+        local IntroInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+        Tween:Create(Logo.Instance, IntroInfo, {ImageTransparency = 0}, true)
+        Tween:Create(Title.Instance, IntroInfo, {TextTransparency = 0}, true)
+        Tween:Create(BarBack.Instance, IntroInfo, {BackgroundTransparency = 0}, true)
+        Tween:Create(Status.Instance, IntroInfo, {TextTransparency = 0}, true)
+
+        Tween:Create(BarFill.Instance, TweenInfo.new(Duration, Enum.EasingStyle.Linear), {
+            Size = UDim2New(1, 0, 1, 0)
+        }, true)
+
+        self:Thread(function()
+            task.wait(Duration)
+
+            local OutInfo = TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+            Tween:Create(Logo.Instance, OutInfo, {ImageTransparency = 1}, true)
+            Tween:Create(Title.Instance, OutInfo, {TextTransparency = 1}, true)
+            Tween:Create(BarBack.Instance, OutInfo, {BackgroundTransparency = 1}, true)
+            Tween:Create(Status.Instance, OutInfo, {TextTransparency = 1}, true)
+            Tween:Create(Overlay.Instance, OutInfo, {BackgroundTransparency = 1}, true)
+
+            local BlurTween = TweenService:Create(Blur, OutInfo, {Size = 0})
+            BlurTween:Play()
+            BlurTween.Completed:Wait()
+
+            Splash:Clean()
+            self.SplashGui = nil
+            Blur:Destroy()
+            self.SplashBlur = nil
+
+            self.Holder.Instance.Enabled = true
+            self:SafeCall(Callback)
+        end)
     end
 
     function Fern:GetConfig()
@@ -1519,7 +1793,15 @@ local Fern do
             Items["Toggle"].Instance.Visible = Bool 
         end
 
-        Items["Toggle"]:Connect("MouseButton1Down", function()
+        function Toggle:Colorpicker(Data)
+            return AttachColorpicker(Toggle, Data)
+        end
+
+        function Toggle:Keybind(Data)
+            return AttachKeybind(Toggle, Data)
+        end
+
+        Items["Toggle"]:Connect("MouseButton1Down", function())
             Toggle:Set(not Toggle.Value)
         end)
 
@@ -1775,7 +2057,454 @@ local Fern do
         return Slider 
     end
 
-    -- Label
+    -- Shared Colorpicker attachment for Label/Toggle rows
+    local function GetAttachmentPosition(ParentFrame)
+        ParentFrame._AttachmentIndex = (ParentFrame._AttachmentIndex or 0) + 1
+        return UDim2New(1, -28 - ((ParentFrame._AttachmentIndex - 1) * 58), 0.5, 0)
+    end
+
+    local function AttachColorpicker(Element, Data)
+        Data = Data or {}
+
+        local ParentFrame = Element.Items["Label"] or Element.Items["Toggle"]
+        if not ParentFrame then return end
+
+        local Colorpicker = {
+            Element = Element,
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or FromRGB(255, 255, 255),
+            HasAlpha = Data.Alpha or Data.alpha or false,
+            Callback = Data.Callback or Data.callback or function() end,
+            Hue = 0,
+            Sat = 1,
+            Val = 1,
+            Alpha = 0,
+            Color = FromRGB(255, 255, 255),
+            IsOpen = false,
+            Connections = {}
+        }
+
+        local Items = {} do
+            Items["Button"] = Instances:Create("TextButton", {
+                Parent = ParentFrame.Instance,
+                Text = "",
+                AutoButtonColor = false,
+                AnchorPoint = Vector2New(1, 0.5),
+                Position = GetAttachmentPosition(ParentFrame),
+                Size = UDim2FromOffset(16, 16),
+                BackgroundColor3 = Colorpicker.Default,
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Button"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["Button"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Items["Popup"] = Instances:Create("Frame", {
+                Parent = Fern.UnusedHolder.Instance,
+                Visible = false,
+                Size = UDim2FromOffset(220, Colorpicker.HasAlpha and 248 or 220),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20),
+                ZIndex = 50
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["Popup"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Popup"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Items["SV"] = Instances:Create("ImageButton", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(12, 12),
+                Size = UDim2FromOffset(160, 120),
+                AutoButtonColor = false,
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(255, 0, 0),
+                Image = "",
+                Text = ""
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["SV"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Items["SVWhite"] = Instances:Create("Frame", {
+                Parent = Items["SV"].Instance,
+                Size = UDim2New(1, 0, 1, 0),
+                BackgroundColor3 = FromRGB(255, 255, 255),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UIGradient", {
+                Parent = Items["SVWhite"].Instance,
+                Transparency = NumSequence.new({
+                    NumSequenceKeypoint.new(0, 0),
+                    NumSequenceKeypoint.new(1, 1)
+                })
+            })
+
+            Items["SVBlack"] = Instances:Create("Frame", {
+                Parent = Items["SV"].Instance,
+                Size = UDim2New(1, 0, 1, 0),
+                BackgroundColor3 = FromRGB(0, 0, 0),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UIGradient", {
+                Parent = Items["SVBlack"].Instance,
+                Rotation = 90,
+                Transparency = NumSequence.new({
+                    NumSequenceKeypoint.new(0, 1),
+                    NumSequenceKeypoint.new(1, 0)
+                })
+            })
+
+            Items["SVPicker"] = Instances:Create("Frame", {
+                Parent = Items["SV"].Instance,
+                AnchorPoint = Vector2New(0.5, 0.5),
+                Position = UDim2New(1, 0, 0, 0),
+                Size = UDim2FromOffset(8, 8),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["SVPicker"].Instance,
+                Color = FromRGB(255, 255, 255),
+                Thickness = 2
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["SVPicker"].Instance,
+                CornerRadius = UDimNew(1, 0)
+            })
+
+            Items["Hue"] = Instances:Create("ImageButton", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(184, 12),
+                Size = UDim2FromOffset(24, 120),
+                AutoButtonColor = false,
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(255, 255, 255),
+                Image = "",
+                Text = ""
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Hue"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Instances:Create("UIGradient", {
+                Parent = Items["Hue"].Instance,
+                Color = RGBSequence.new({
+                    RGBSequenceKeypoint.new(0, FromRGB(255, 0, 0)),
+                    RGBSequenceKeypoint.new(0.17, FromRGB(255, 255, 0)),
+                    RGBSequenceKeypoint.new(0.33, FromRGB(0, 255, 0)),
+                    RGBSequenceKeypoint.new(0.5, FromRGB(0, 255, 255)),
+                    RGBSequenceKeypoint.new(0.67, FromRGB(0, 0, 255)),
+                    RGBSequenceKeypoint.new(0.83, FromRGB(255, 0, 255)),
+                    RGBSequenceKeypoint.new(1, FromRGB(255, 0, 0))
+                }),
+                Rotation = 90
+            })
+
+            Items["HuePicker"] = Instances:Create("Frame", {
+                Parent = Items["Hue"].Instance,
+                AnchorPoint = Vector2New(0.5, 0.5),
+                Position = UDim2New(0.5, 0, 0, 0),
+                Size = UDim2New(1, 4, 0, 4),
+                BackgroundColor3 = FromRGB(255, 255, 255),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["HuePicker"].Instance,
+                CornerRadius = UDimNew(1, 0)
+            })
+
+            Items["Preview"] = Instances:Create("Frame", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(12, 142),
+                Size = UDim2FromOffset(196, 22),
+                BackgroundColor3 = FromRGB(255, 255, 255),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Preview"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["Preview"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Items["Hex"] = Instances:Create("TextLabel", {
+                Parent = Items["Preview"].Instance,
+                Size = UDim2New(1, -8, 1, 0),
+                Position = UDim2FromOffset(8, 0),
+                BackgroundTransparency = 1,
+                FontFace = Fern.Font,
+                Text = "#FFFFFF",
+                TextColor3 = FromRGB(221, 221, 221),
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+
+            if Colorpicker.HasAlpha then
+                Items["Alpha"] = Instances:Create("ImageButton", {
+                    Parent = Items["Popup"].Instance,
+                    Position = UDim2FromOffset(12, 176),
+                    Size = UDim2FromOffset(196, 16),
+                    AutoButtonColor = false,
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = FromRGB(255, 255, 255),
+                    Image = "",
+                    Text = ""
+                })
+
+                Instances:Create("UICorner", {
+                    Parent = Items["Alpha"].Instance,
+                    CornerRadius = UDimNew(0, 3)
+                })
+
+                Instances:Create("UIGradient", {
+                    Parent = Items["Alpha"].Instance,
+                    Color = RGBSequence.new(FromRGB(255, 255, 255), FromRGB(0, 0, 0)),
+                    Rotation = 0
+                })
+
+                Items["AlphaPicker"] = Instances:Create("Frame", {
+                    Parent = Items["Alpha"].Instance,
+                    AnchorPoint = Vector2New(0.5, 0.5),
+                    Position = UDim2New(0, 0, 0.5, 0),
+                    Size = UDim2FromOffset(4, 18),
+                    BackgroundColor3 = FromRGB(255, 255, 255),
+                    BorderSizePixel = 0
+                })
+
+                Instances:Create("UICorner", {
+                    Parent = Items["AlphaPicker"].Instance,
+                    CornerRadius = UDimNew(1, 0)
+                })
+            end
+        end
+
+        local RenderStepped
+        local Debounce = false
+        local DraggingSV = false
+        local DraggingHue = false
+        local DraggingAlpha = false
+
+        local function UpdateVisuals()
+            Items["SV"].Instance.BackgroundColor3 = FromHSV(Colorpicker.Hue, 1, 1)
+            Items["SVPicker"].Instance.Position = UDim2New(Colorpicker.Sat, 0, 1 - Colorpicker.Val, 0)
+            Items["HuePicker"].Instance.Position = UDim2New(0.5, 0, Colorpicker.Hue, 0)
+
+            if Colorpicker.HasAlpha then
+                Items["AlphaPicker"].Instance.Position = UDim2New(Colorpicker.Alpha, 0, 0.5, 0)
+                Items["Preview"].Instance.BackgroundColor3 = Colorpicker.Color
+                Items["Preview"].Instance.BackgroundTransparency = Colorpicker.Alpha
+            else
+                Items["Preview"].Instance.BackgroundTransparency = 0
+                Items["Preview"].Instance.BackgroundColor3 = Colorpicker.Color
+            end
+
+            Items["Button"].Instance.BackgroundColor3 = Colorpicker.Color
+            if Colorpicker.HasAlpha then
+                Items["Button"].Instance.BackgroundTransparency = Colorpicker.Alpha
+            end
+
+            Items["Hex"].Instance.Text = "#" .. Fern:ColorToHex(Colorpicker.Color)
+        end
+
+        local function ApplyColor()
+            Colorpicker.Color = FromHSV(Colorpicker.Hue, Colorpicker.Sat, Colorpicker.Val)
+            Fern.Flags[Colorpicker.Flag] = {
+                Color = Colorpicker.Color,
+                HexValue = Fern:ColorToHex(Colorpicker.Color),
+                Alpha = Colorpicker.Alpha
+            }
+            UpdateVisuals()
+            Fern:SafeCall(Colorpicker.Callback, Colorpicker.Color, Colorpicker.Alpha)
+        end
+
+        function Colorpicker:Get()
+            return Colorpicker.Color, Colorpicker.Alpha
+        end
+
+        function Colorpicker:Set(Color, Alpha)
+            if type(Color) == "string" then
+                Color = Fern:HexToColor(Color)
+            end
+            Color = Color or Colorpicker.Default
+            Alpha = Alpha or 0
+
+            local H, S, V = Color:ToHSV()
+            Colorpicker.Hue = H
+            Colorpicker.Sat = S
+            Colorpicker.Val = V
+            Colorpicker.Alpha = Colorpicker.HasAlpha and Alpha or 0
+            ApplyColor()
+        end
+
+        function Colorpicker:SetOpen(Bool)
+            if Debounce then return end
+            Debounce = true
+            Colorpicker.IsOpen = Bool
+
+            if Bool then
+                for _, Frame in Fern.OpenFrames do
+                    if Frame.SetOpen and Frame ~= Colorpicker then
+                        Frame:SetOpen(false)
+                    end
+                end
+                Fern.OpenFrames[Colorpicker] = Colorpicker
+
+                Items["Popup"].Instance.Visible = true
+                Items["Popup"].Instance.Parent = Fern.Holder.Instance
+                Fern:PositionPopup(Items["Popup"], Items["Button"], 6)
+
+                RenderStepped = RunService.RenderStepped:Connect(function()
+                    Fern:PositionPopup(Items["Popup"], Items["Button"], 6)
+                end)
+                TableInsert(Colorpicker.Connections, RenderStepped)
+            else
+                Fern.OpenFrames[Colorpicker] = nil
+                if RenderStepped then
+                    RenderStepped:Disconnect()
+                    RenderStepped = nil
+                end
+            end
+
+            local Descendants = Items["Popup"].Instance:GetDescendants()
+            TableInsert(Descendants, Items["Popup"].Instance)
+
+            for _, Value in Descendants do
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then
+                        for _, Prop in Props do
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+
+            task.delay(Fern.FadeSpeed + 0.1, function()
+                Debounce = false
+                Items["Popup"].Instance.Visible = Colorpicker.IsOpen
+                if not Colorpicker.IsOpen then
+                    Items["Popup"].Instance.Parent = Fern.UnusedHolder.Instance
+                end
+            end)
+        end
+
+        function Colorpicker:SetVisibility(Bool)
+            Items["Button"].Instance.Visible = Bool
+        end
+
+        local function UpdateSV(Input)
+            local Frame = Items["SV"].Instance
+            local RelativeX = MathClamp((Input.Position.X - Frame.AbsolutePosition.X) / Frame.AbsoluteSize.X, 0, 1)
+            local RelativeY = MathClamp((Input.Position.Y - Frame.AbsolutePosition.Y) / Frame.AbsoluteSize.Y, 0, 1)
+            Colorpicker.Sat = RelativeX
+            Colorpicker.Val = 1 - RelativeY
+            ApplyColor()
+        end
+
+        local function UpdateHue(Input)
+            local Frame = Items["Hue"].Instance
+            Colorpicker.Hue = MathClamp((Input.Position.Y - Frame.AbsolutePosition.Y) / Frame.AbsoluteSize.Y, 0, 1)
+            ApplyColor()
+        end
+
+        local function UpdateAlpha(Input)
+            if not Colorpicker.HasAlpha then return end
+            local Frame = Items["Alpha"].Instance
+            Colorpicker.Alpha = MathClamp((Input.Position.X - Frame.AbsolutePosition.X) / Frame.AbsoluteSize.X, 0, 1)
+            ApplyColor()
+        end
+
+        Items["Button"]:Connect("MouseButton1Down", function()
+            Colorpicker:SetOpen(not Colorpicker.IsOpen)
+        end)
+
+        Items["SV"]:Connect("InputBegan", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                DraggingSV = true
+                UpdateSV(Input)
+            end
+        end)
+
+        Items["Hue"]:Connect("InputBegan", function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                DraggingHue = true
+                UpdateHue(Input)
+            end
+        end)
+
+        if Colorpicker.HasAlpha then
+            Items["Alpha"]:Connect("InputBegan", function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    DraggingAlpha = true
+                    UpdateAlpha(Input)
+                end
+            end)
+        end
+
+        Fern:Connect(UserInputService.InputChanged, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseMovement then
+                if DraggingSV then UpdateSV(Input) end
+                if DraggingHue then UpdateHue(Input) end
+                if DraggingAlpha then UpdateAlpha(Input) end
+            end
+        end)
+
+        Fern:Connect(UserInputService.InputEnded, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                DraggingSV = false
+                DraggingHue = false
+                DraggingAlpha = false
+            end
+        end)
+
+        Fern:Connect(UserInputService.InputBegan, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 and Colorpicker.IsOpen then
+                if not Fern:IsMouseOverFrame(Items["Popup"]) and not Fern:IsMouseOverFrame(Items["Button"]) then
+                    Colorpicker:SetOpen(false)
+                end
+            end
+        end)
+
+        Colorpicker:Set(Colorpicker.Default, 0)
+        Fern.SetFlags[Colorpicker.Flag] = function(Color, Alpha)
+            Colorpicker:Set(Color, Alpha)
+        end
+
+        return Colorpicker
+    end
+
     function Fern.Sections:Label(Text)
         local Label = {
             Window = self.Window,
@@ -1815,7 +2544,417 @@ local Fern do
             Items["Label"].Instance.Visible = Bool
         end
 
+        function Label:Colorpicker(Data)
+            return AttachColorpicker(Label, Data)
+        end
+
+        function Label:Keybind(Data)
+            return AttachKeybind(Label, Data)
+        end
+
         return Label 
+    end
+
+    -- Shared Keybind attachment for Label/Toggle rows
+    local function AttachKeybind(Element, Data)
+        Data = Data or {}
+
+        local ParentFrame = Element.Items["Label"] or Element.Items["Toggle"]
+        if not ParentFrame then return end
+
+        local Keybind = {
+            Element = Element,
+            Name = Data.Name or Data.name or "Keybind",
+            Flag = Data.Flag or Data.flag or Fern:NextFlag(),
+            Default = Data.Default or Data.default or Enum.KeyCode.Unknown,
+            Mode = Data.Mode or Data.mode or "Toggle",
+            Callback = Data.Callback or Data.callback or function() end,
+            Key = Enum.KeyCode.Unknown,
+            Active = false,
+            Binding = false,
+            IsOpen = false,
+            Connections = {},
+            ListEntry = nil
+        }
+
+        local Modes = {"Toggle", "Hold", "Always On"}
+        local ModeButtons = {}
+
+        local Items = {} do
+            Items["Button"] = Instances:Create("TextButton", {
+                Parent = ParentFrame.Instance,
+                Text = "",
+                AutoButtonColor = false,
+                AnchorPoint = Vector2New(1, 0.5),
+                Position = GetAttachmentPosition(ParentFrame),
+                Size = UDim2FromOffset(52, 16),
+                BackgroundColor3 = FromRGB(20, 20, 20),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Button"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["Button"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Items["KeyText"] = Instances:Create("TextLabel", {
+                Parent = Items["Button"].Instance,
+                Size = UDim2New(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                FontFace = Fern.Font,
+                Text = "None",
+                TextColor3 = FromRGB(145, 145, 145),
+                TextSize = 12
+            })
+
+            Items["Popup"] = Instances:Create("Frame", {
+                Parent = Fern.UnusedHolder.Instance,
+                Visible = false,
+                Size = UDim2FromOffset(160, 118),
+                BorderSizePixel = 0,
+                BackgroundColor3 = FromRGB(20, 20, 20),
+                ZIndex = 50
+            })
+
+            Instances:Create("UIStroke", {
+                Parent = Items["Popup"].Instance,
+                Color = FromRGB(35, 35, 35),
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["Popup"].Instance,
+                CornerRadius = UDimNew(0, 4)
+            })
+
+            Items["ModeLabel"] = Instances:Create("TextLabel", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(10, 8),
+                Size = UDim2FromOffset(140, 14),
+                BackgroundTransparency = 1,
+                FontFace = Fern.Font,
+                Text = "Mode",
+                TextColor3 = FromRGB(119, 119, 119),
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+
+            Items["ModeHolder"] = Instances:Create("Frame", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(10, 28),
+                Size = UDim2FromOffset(140, 22),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UIListLayout", {
+                Parent = Items["ModeHolder"].Instance,
+                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDimNew(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            for Index, Mode in Modes do
+                local ModeButton = Instances:Create("TextButton", {
+                    Parent = Items["ModeHolder"].Instance,
+                    Text = Mode,
+                    AutoButtonColor = false,
+                    FontFace = Fern.Font,
+                    TextSize = 11,
+                    TextColor3 = FromRGB(145, 145, 145),
+                    Size = UDim2FromOffset(44, 22),
+                    BackgroundColor3 = FromRGB(26, 26, 26),
+                    BorderSizePixel = 0,
+                    LayoutOrder = Index
+                })
+
+                Instances:Create("UICorner", {
+                    Parent = ModeButton.Instance,
+                    CornerRadius = UDimNew(0, 3)
+                })
+
+                ModeButtons[Mode] = ModeButton
+            end
+
+            Items["BindLabel"] = Instances:Create("TextLabel", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(10, 58),
+                Size = UDim2FromOffset(140, 14),
+                BackgroundTransparency = 1,
+                FontFace = Fern.Font,
+                Text = "Key",
+                TextColor3 = FromRGB(119, 119, 119),
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+
+            Items["BindAction"] = Instances:Create("TextButton", {
+                Parent = Items["Popup"].Instance,
+                Position = UDim2FromOffset(10, 78),
+                Size = UDim2FromOffset(140, 24),
+                AutoButtonColor = false,
+                FontFace = Fern.Font,
+                Text = "Click to bind",
+                TextColor3 = FromRGB(221, 221, 221),
+                TextSize = 13,
+                BackgroundColor3 = FromRGB(26, 26, 26),
+                BorderSizePixel = 0
+            })
+
+            Instances:Create("UICorner", {
+                Parent = Items["BindAction"].Instance,
+                CornerRadius = UDimNew(0, 3)
+            })
+        end
+
+        local RenderStepped
+        local Debounce = false
+        local BindConnection
+
+        local function UpdateModeVisuals()
+            for Mode, Button in ModeButtons do
+                if Mode == Keybind.Mode then
+                    Button:Tween(nil, {BackgroundColor3 = Fern.Theme.Accent, TextColor3 = FromRGB(255, 255, 255)})
+                else
+                    Button:Tween(nil, {BackgroundColor3 = FromRGB(26, 26, 26), TextColor3 = FromRGB(145, 145, 145)})
+                end
+            end
+        end
+
+        local function UpdateKeyText()
+            local KeyName = Keybind.Binding and "..." or Fern:GetKeyName(Keybind.Key)
+            if KeyName == "Unknown" then KeyName = "None" end
+            Items["KeyText"].Instance.Text = KeyName
+            Items["BindAction"].Instance.Text = Keybind.Binding and "Press any key..." or KeyName
+        end
+
+        local function SetActive(Bool)
+            Keybind.Active = Bool
+            if Keybind.ListEntry then
+                Keybind.ListEntry:Set(Bool)
+            end
+            Fern:SafeCall(Keybind.Callback, Keybind.Active)
+        end
+
+        local function RefreshAlwaysOn()
+            if Keybind.Mode == "Always On" then
+                SetActive(true)
+            elseif not Keybind.Active then
+                SetActive(false)
+            end
+        end
+
+        function Keybind:Get()
+            return {
+                Key = Keybind.Key,
+                Mode = Keybind.Mode,
+                Active = Keybind.Active
+            }
+        end
+
+        function Keybind:Set(Value)
+            if type(Value) == "table" then
+                if Value.Key then
+                    Keybind.Key = Fern:ParseInputEnum(Value.Key)
+                end
+                if Value.Mode then
+                    Keybind.Mode = Value.Mode
+                end
+            end
+
+            Fern.Flags[Keybind.Flag] = {
+                Key = Keybind.Key,
+                Mode = Keybind.Mode
+            }
+
+            UpdateKeyText()
+            UpdateModeVisuals()
+            RefreshAlwaysOn()
+
+            if Keybind.ListEntry then
+                Keybind.ListEntry:SetText(Fern:GetKeyName(Keybind.Key), Keybind.Mode)
+            end
+        end
+
+        function Keybind:SetOpen(Bool)
+            if Debounce then return end
+            Debounce = true
+            Keybind.IsOpen = Bool
+
+            if Bool then
+                for _, Frame in Fern.OpenFrames do
+                    if Frame.SetOpen and Frame ~= Keybind then
+                        Frame:SetOpen(false)
+                    end
+                end
+                Fern.OpenFrames[Keybind] = Keybind
+
+                Items["Popup"].Instance.Visible = true
+                Items["Popup"].Instance.Parent = Fern.Holder.Instance
+                Fern:PositionPopup(Items["Popup"], Items["Button"], 6)
+
+                RenderStepped = RunService.RenderStepped:Connect(function()
+                    Fern:PositionPopup(Items["Popup"], Items["Button"], 6)
+                end)
+            else
+                Fern.OpenFrames[Keybind] = nil
+                if RenderStepped then
+                    RenderStepped:Disconnect()
+                    RenderStepped = nil
+                end
+                if Keybind.Binding and BindConnection then
+                    BindConnection:Disconnect()
+                    BindConnection = nil
+                    Keybind.Binding = false
+                    UpdateKeyText()
+                end
+            end
+
+            local Descendants = Items["Popup"].Instance:GetDescendants()
+            TableInsert(Descendants, Items["Popup"].Instance)
+
+            for _, Value in Descendants do
+                local Props = Tween:GetProperty(Value)
+                if Props then
+                    if type(Props) == "table" then
+                        for _, Prop in Props do
+                            Tween:FadeItem(Value, Prop, Bool, Fern.FadeSpeed)
+                        end
+                    else
+                        Tween:FadeItem(Value, Props, Bool, Fern.FadeSpeed)
+                    end
+                end
+            end
+
+            task.delay(Fern.FadeSpeed + 0.1, function()
+                Debounce = false
+                Items["Popup"].Instance.Visible = Keybind.IsOpen
+                if not Keybind.IsOpen then
+                    Items["Popup"].Instance.Parent = Fern.UnusedHolder.Instance
+                end
+            end)
+        end
+
+        function Keybind:SetVisibility(Bool)
+            Items["Button"].Instance.Visible = Bool
+        end
+
+        local function KeyMatches(Input)
+            if tostring(Input.KeyCode) ~= "Enum.KeyCode.Unknown" then
+                return Input.KeyCode == Keybind.Key
+            end
+            return Input.UserInputType == Keybind.Key
+        end
+
+        Fern:Connect(UserInputService.InputBegan, function(Input, Processed)
+            if Keybind.Binding or Processed then return end
+
+            if Keybind.IsOpen then return end
+
+            if KeyMatches(Input) then
+                if Keybind.Mode == "Toggle" then
+                    SetActive(not Keybind.Active)
+                elseif Keybind.Mode == "Hold" then
+                    SetActive(true)
+                end
+            end
+        end)
+
+        Fern:Connect(UserInputService.InputEnded, function(Input)
+            if Keybind.Mode == "Hold" and KeyMatches(Input) then
+                SetActive(false)
+            end
+        end)
+
+        Items["Button"]:Connect("MouseButton1Down", function()
+            Keybind:SetOpen(not Keybind.IsOpen)
+        end)
+
+        for Mode, Button in ModeButtons do
+            Button:Connect("MouseButton1Down", function()
+                Keybind.Mode = Mode
+                Fern.Flags[Keybind.Flag] = {
+                    Key = Keybind.Key,
+                    Mode = Keybind.Mode
+                }
+                UpdateModeVisuals()
+                RefreshAlwaysOn()
+                if Keybind.ListEntry then
+                    Keybind.ListEntry:SetText(Fern:GetKeyName(Keybind.Key), Keybind.Mode)
+                end
+            end)
+        end
+
+        Items["BindAction"]:Connect("MouseButton1Down", function()
+            if Keybind.Binding then return end
+            Keybind.Binding = true
+            UpdateKeyText()
+
+            if BindConnection then
+                BindConnection:Disconnect()
+            end
+
+            BindConnection = UserInputService.InputBegan:Connect(function(Input, Processed)
+                if Processed then return end
+                if Input.KeyCode == Enum.KeyCode.Escape then
+                    Keybind.Binding = false
+                    BindConnection:Disconnect()
+                    BindConnection = nil
+                    UpdateKeyText()
+                    return
+                end
+
+                if Input.KeyCode ~= Enum.KeyCode.Unknown then
+                    Keybind.Key = Input.KeyCode
+                else
+                    Keybind.Key = Input.UserInputType
+                end
+
+                Keybind.Binding = false
+                BindConnection:Disconnect()
+                BindConnection = nil
+
+                Fern.Flags[Keybind.Flag] = {
+                    Key = Keybind.Key,
+                    Mode = Keybind.Mode
+                }
+
+                UpdateKeyText()
+                if Keybind.ListEntry then
+                    Keybind.ListEntry:SetText(Fern:GetKeyName(Keybind.Key), Keybind.Mode)
+                end
+            end)
+        end)
+
+        Fern:Connect(UserInputService.InputBegan, function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 and Keybind.IsOpen then
+                if not Fern:IsMouseOverFrame(Items["Popup"]) and not Fern:IsMouseOverFrame(Items["Button"]) then
+                    Keybind:SetOpen(false)
+                end
+            end
+        end)
+
+        if Fern.KeyList then
+            Keybind.ListEntry = Fern.KeyList:Add(Keybind.Name, Keybind.Mode)
+            Keybind.ListEntry:Set(false)
+        end
+
+        Keybind:Set({
+            Key = Keybind.Default,
+            Mode = Keybind.Mode
+        })
+
+        Fern.SetFlags[Keybind.Flag] = function(Value)
+            Keybind:Set(Value)
+        end
+
+        return Keybind
     end
 
     -- Keybind List
@@ -2350,13 +3489,8 @@ local Fern do
                 Items["DropdownHolder"].Instance.Parent = Fern.Holder.Instance
                 
                 RenderStepped = RunService.RenderStepped:Connect(function()
-                    Items["DropdownHolder"].Instance.Position = UDim2New(
-                        0, 
-                        Items["Indicator"].Instance.AbsolutePosition.X, 
-                        0, 
-                        Items["Indicator"].Instance.AbsolutePosition.Y + Items["Indicator"].Instance.AbsoluteSize.Y * 3 + 19
-                    )
                     Items["DropdownHolder"].Instance.Size = UDim2New(0, Items["Indicator"].Instance.AbsoluteSize.X, 0, 0)
+                    Fern:PositionPopup(Items["DropdownHolder"], Items["Indicator"], 4)
                 end)
 
                 for _, Frame in Fern.OpenFrames do 
@@ -2594,13 +3728,6 @@ local Fern do
                 Dropdown:Add(Value)
             end
         end
-
-        Items["Indicator"]:Connect("Changed", function(Property)
-            if Property == "AbsolutePosition" and Dropdown.IsOpen then
-                Dropdown.IsOpen = not Fern:IsMouseOverFrame(Items["DropdownHolder"])
-                Items["DropdownHolder"].Instance.Visible = Dropdown.IsOpen
-            end
-        end)
 
         Items["Indicator"]:Connect("MouseButton1Down", function()
             Dropdown:SetOpen(not Dropdown.IsOpen)
@@ -2963,59 +4090,6 @@ local Fern do
     -- Return the library
     return Fern
 end
-
--- ============================================
--- USAGE EXAMPLE
--- ============================================
-
-local Window = Fern:Window({
-    Logo = Fern:GetGitHubImage("fern%20logo.png"),
-    Build = "v1.0.0"
-})
-
-local KeybindList = Fern:KeybindList()
-local Watermark = Fern:Watermark("Fern UI", Fern:GetGitHubImage("fern%20logo.png"))
-
--- Main Page
-local MainPage = Window:Page({Icon = Fern:GetGitHubImage("fern%20logo.png")})
-local MainSection = MainPage:Section({Name = "Main Features"})
-
-MainSection:Toggle({
-    Name = "Example Toggle",
-    Flag = "example_toggle",
-    Default = false,
-    Callback = function(Value)
-        print("Toggle:", Value)
-    end
-})
-
-MainSection:Button({
-    Name = "Example Button",
-    Callback = function()
-        Fern:Notification("Button clicked!", 3, Fern.Theme.Accent)
-    end
-})
-
-MainSection:Slider({
-    Name = "Example Slider",
-    Flag = "example_slider",
-    Default = 50,
-    Min = 0,
-    Max = 100,
-    Decimals = 1,
-    Suffix = "%",
-    Callback = function(Value)
-        print("Slider:", Value)
-    end
-})
-
-MainSection:Label("Fern UI v1.0.0")
-
--- Settings
-Fern:CreateSettingsPage(Window, KeybindList, Watermark)
-
--- Notification
-Fern:Notification(string.format("Fern UI loaded in %.4f seconds", os.clock() - LoadingTick), 4, Fern.Theme.Accent)
 
 getgenv().Fern = Fern
 return Fern
