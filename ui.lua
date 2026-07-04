@@ -352,9 +352,12 @@ local Fern do
             local StartSize = nil
             local EdgeThickness = 2
 
+            -- FIX: Use a table to store edge buttons properly
+            local Edges = {}
+            
             local function MakeEdge(Name, Position, Size)
                 local Button = Instances:Create("TextButton", {
-                    Name = "Resize",
+                    Name = Name,
                     Size = Size,
                     Position = Position,
                     BackgroundColor3 = FromRGB(0, 102, 51),
@@ -369,12 +372,18 @@ local Fern do
                 return Button
             end
 
-            local Edges = {
-                {Button = MakeEdge("Left", UDim2New(0, 0, 0, 0), UDim2New(0, EdgeThickness, 1, 0)), Side = "L"},
-                {Button = MakeEdge("Right", UDim2New(1, -EdgeThickness, 0, 0), UDim2New(0, EdgeThickness, 1, 0)), Side = "R"},
-                {Button = MakeEdge("Top", UDim2New(0, 0, 0, 0), UDim2New(1, 0, 0, EdgeThickness)), Side = "T"},
-                {Button = MakeEdge("Bottom", UDim2New(0, 0, 1, -EdgeThickness), UDim2New(1, 0, 0, EdgeThickness)), Side = "B"},
+            -- Create edges properly with unique names
+            local edgeData = {
+                {Name = "ResizeLeft", Pos = UDim2New(0, 0, 0, 0), Size = UDim2New(0, EdgeThickness, 1, 0), Side = "L"},
+                {Name = "ResizeRight", Pos = UDim2New(1, -EdgeThickness, 0, 0), Size = UDim2New(0, EdgeThickness, 1, 0), Side = "R"},
+                {Name = "ResizeTop", Pos = UDim2New(0, 0, 0, 0), Size = UDim2New(1, 0, 0, EdgeThickness), Side = "T"},
+                {Name = "ResizeBottom", Pos = UDim2New(0, 0, 1, -EdgeThickness), Size = UDim2New(1, 0, 0, EdgeThickness), Side = "B"},
             }
+
+            for _, data in edgeData do
+                local btn = MakeEdge(data.Name, data.Pos, data.Size)
+                table.insert(Edges, {Button = btn, Side = data.Side})
+            end
 
             local function BeginResizing(Side)
                 Resizing = true 
@@ -803,11 +812,12 @@ local Fern do
             BorderSizePixel = 0
         })
 
+        -- LOGO 2x BIGGER ON SPLASH (was 96, now 192)
         local Logo = Instances:Create("ImageLabel", {
             Parent = Container.Instance,
             AnchorPoint = Vector2New(0.5, 0),
             Position = UDim2New(0.5, 0, 0, 0),
-            Size = UDim2FromOffset(96, 96),
+            Size = UDim2FromOffset(192, 192),
             BackgroundTransparency = 1,
             Image = self:GetGitHubImage(self.GitHub.Images.Logo),
             ImageColor3 = self.Theme.Accent,
@@ -818,7 +828,7 @@ local Fern do
         local Title = Instances:Create("TextLabel", {
             Parent = Container.Instance,
             AnchorPoint = Vector2New(0.5, 0),
-            Position = UDim2New(0.5, 0, 0, 102),
+            Position = UDim2New(0.5, 0, 0, 198),
             Size = UDim2FromOffset(200, 20),
             BackgroundTransparency = 1,
             FontFace = self.Font,
@@ -831,7 +841,7 @@ local Fern do
         local BarBack = Instances:Create("Frame", {
             Parent = Container.Instance,
             AnchorPoint = Vector2New(0.5, 0),
-            Position = UDim2New(0.5, 0, 0, 138),
+            Position = UDim2New(0.5, 0, 0, 228),
             Size = UDim2FromOffset(180, 4),
             BackgroundColor3 = FromRGB(35, 35, 35),
             BorderSizePixel = 0,
@@ -859,7 +869,7 @@ local Fern do
         local Status = Instances:Create("TextLabel", {
             Parent = Container.Instance,
             AnchorPoint = Vector2New(0.5, 0),
-            Position = UDim2New(0.5, 0, 0, 152),
+            Position = UDim2New(0.5, 0, 0, 238),
             Size = UDim2FromOffset(200, 16),
             BackgroundTransparency = 1,
             FontFace = self.Font,
@@ -1156,7 +1166,7 @@ local Fern do
             Items["Top"] = Instances:Create("Frame", {
                 Parent = Items["MainFrame"].Instance,
                 BorderColor3 = FromRGB(0, 0, 0),
-                Size = UDim2New(1, 0, 0, 46),
+                Size = UDim2New(1, 0, 0, 106), -- Increased for larger logo
                 BorderSizePixel = 0,
                 BackgroundColor3 = FromRGB(26, 26, 26)
             })
@@ -1166,6 +1176,7 @@ local Fern do
                 CornerRadius = UDimNew(0, 4)
             })
             
+            -- LOGO 3x BIGGER IN UI (was 32, now 96)
             Items["Logo"] = Instances:Create("ImageLabel", {
                 Parent = Items["Top"].Instance,
                 ImageColor3 = FromRGB(0, 102, 51),
@@ -1174,7 +1185,7 @@ local Fern do
                 Image = Window.Logo,
                 BackgroundTransparency = 1,
                 Position = UDim2New(0, 6, 0.5, 0),
-                Size = UDim2New(0, 32, 0, 32),
+                Size = UDim2New(0, 96, 0, 96),
                 BorderSizePixel = 0
             })
             Items["Logo"]:AddToTheme({ImageColor3 = "Accent"})
@@ -1214,12 +1225,13 @@ local Fern do
                 SortOrder = Enum.SortOrder.LayoutOrder
             })
 
+            -- Update side panel position (was 46, now 106)
             Items["Side"] = Instances:Create("Frame", {
                 Parent = Items["MainFrame"].Instance,
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 0, 0, 46),
+                Position = UDim2New(0, 0, 0, 106),
                 BorderColor3 = FromRGB(0, 0, 0),
-                Size = UDim2New(0, 148, 1, -71),
+                Size = UDim2New(0, 148, 1, -131),
                 BorderSizePixel = 0
             })
             
@@ -1328,8 +1340,8 @@ local Fern do
                 Parent = Fern.UnusedHolder.Instance,
                 Visible = false,
                 BackgroundTransparency = 1,
-                Position = UDim2New(0, 149, 0, 45),
-                Size = UDim2New(1, -149, 1, -70)
+                Position = UDim2New(0, 149, 0, 106),
+                Size = UDim2New(1, -149, 1, -131)
             })
 
             Items["SubPages"] = Instances:Create("Frame", {
